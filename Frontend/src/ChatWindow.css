@@ -1,0 +1,212 @@
+.chatWindow {
+    background-color: #212121;
+    height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    text-align: center;
+}
+
+/* navbar */
+
+.navbar {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.navbar span {
+    margin: 1rem 2rem;
+}
+
+.userIconDiv {
+    margin: 1rem 2rem;
+}
+
+.userIcon {
+    background-color: #339cff;
+    height: 25px;
+    width: 25px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+/* chat input */
+.chatInput {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.inputBox {
+    width: 100%;
+    position: relative;
+    max-width: 700px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+input {
+    width: 100%;
+    border: none;
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 18px 52px 18px 18px; 
+    font-size: 1rem;           
+    line-height: 1.5;           
+    border-radius: 14px;
+    color: #fff;
+
+    box-shadow: rgba(0, 0, 0, 0.05) 0 54px 55px,
+                rgba(0, 0, 0, 0.05) 0 -12px 30px,
+                rgba(0, 0, 0, 0.05) 0 4px 6px,
+                rgba(0, 0, 0, 0.05) 0 12px 3px,
+                rgba(0, 0, 0, 0.05) 0 -3px 5px;
+}
+
+input::placeholder {
+    font-size: 1rem;
+    color: #9ca3af;
+}
+
+input:focus {
+    outline: none;
+}
+
+textarea {
+    resize: none;
+    min-height: 56px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+
+#submit {
+    cursor: pointer;
+    height: 35px;
+    width: 35px;
+    font-size: 20px;
+    position: absolute;
+    right: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#submit i:hover {
+    color: #fff;
+}
+
+.info {
+    font-size: 0.95rem;
+
+    padding: 0.5rem;
+    color: #b4b4b4;
+}
+
+/* dropdown css */
+
+.dropDown {
+  position: absolute;
+  top: 60px;
+  right: 20px;
+  width: 260px;            
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  z-index: 1000;
+}
+
+.dropDownHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dropDownHeader i {
+  font-size: 32px;
+}
+
+.userName {
+  font-size: 15px;
+  font-weight: 600;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userEmail {
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 180px;
+  word-break: break-all;  
+}
+
+.dropDownItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  cursor: pointer;
+  border-radius: 8px;
+  margin-top: 6px;
+}
+
+.dropDownItem:hover {
+  background: var(--hover);
+}
+
+.logout {
+  color: #ff5c5c;
+}
+
+.loaderWrapper { height: 40px; }
+body { overflow: hidden; }
+
+/* GPT reply text */
+.gptDiv {
+    font-size: 1rem;        
+    line-height: 1.75;
+    text-align: left;
+}
+
+/* Markdown paragraphs */
+.gptDiv p {
+    font-size: 1rem;
+    line-height: 1.75;
+    margin-bottom: 0.75rem;
+}
+
+/* Lists */
+.gptDiv ul,
+.gptDiv ol {
+    font-size: 1rem;
+    line-height: 1.7;
+    padding-left: 1.25rem;
+}
+
+/* Inline code */
+.gptDiv code {
+    font-size: 0.95rem;
+}
+
+/* Code blocks */
+.gptDiv pre {
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
