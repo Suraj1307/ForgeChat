@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const MessageSchema = new mongoose.Schema({
   role: {
     type: String,
-    enum: ["user", "assistant"],
+    enum: ["user", "assistant", "system"],
     required: true
   },
   content: {
@@ -20,33 +20,23 @@ const ThreadSchema = new mongoose.Schema({
   threadId: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
+    index: true // Ensures fast lookups by ID
   },
-
-  //thread per user
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
     index: true
   },
-
   title: {
     type: String,
-    default: "New Chat"
+    default: "New Chat",
+    trim: true 
   },
-
   messages: [MessageSchema],
-
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
+}, { 
+  timestamps: true 
 });
 
 export default mongoose.model("Thread", ThreadSchema);

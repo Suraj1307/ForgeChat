@@ -1,11 +1,11 @@
 import "./Sidebar.css";
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useState } from "react";
 import { MyContext } from "./MyContext.jsx";
 import { v1 as uuidv1 } from "uuid";
 import toast from "react-hot-toast";
 
-
-const logo = new URL("./assets/blacklogo.png", import.meta.url).href;
+// Import your logo
+import logoImg from "./assets/blacklogo.png"; 
 
 function Sidebar() {
   const {
@@ -25,22 +25,15 @@ function Sidebar() {
 
     try {
       const response = await fetch("/api/thread", {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        headers: { Authorization: `Bearer ${token}` }
       });
 
       const res = await response.json();
-      if (!response.ok || !Array.isArray(res)) return;
-
-      setAllThreads(
-        res.map(thread => ({
-          threadId: thread.threadId,
-          title: thread.title
-        }))
-      );
-    } catch {
-      toast.error("Failed to load chat history");
+      if (response.ok && Array.isArray(res)) {
+        setAllThreads(res);
+      }
+    } catch (err) {
+      console.error("Sidebar load error:", err);
     }
   };
 
@@ -56,91 +49,89 @@ function Sidebar() {
     setPrevChats([]);
   };
 
-  const changeThread = async (newThreadId) => {
+  const changeThread = async (id) => {
+    if (id === currThreadId) return;
     const token = localStorage.getItem("token");
-    if (!token) return;
-
-    setCurrThreadId(newThreadId);
+    setCurrThreadId(id);
 
     try {
-      const response = await fetch(`/api/thread/${newThreadId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+      const response = await fetch(`/api/thread/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-
       const res = await response.json();
-      if (!response.ok) return toast.error("Failed to open chat");
-
-      setPrevChats(res);
-      setNewChat(false);
-      setReply(null);
+      if (response.ok) {
+        setPrevChats(res);
+        setNewChat(false);
+        setReply(null);
+      }
     } catch {
-      toast.error("Server error");
+      toast.error("Error loading chat");
     }
   };
 
-  const deleteThread = async (threadId) => {
+  const deleteThread = async (id) => {
     const token = localStorage.getItem("token");
-    if (!token) return;
-
     try {
-      const response = await fetch(`/api/thread/${threadId}`, {
+      const response = await fetch(`/api/thread/${id}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        headers: { Authorization: `Bearer ${token}` }
       });
-
-      if (!response.ok) return toast.error("Delete failed");
-
-      setAllThreads(prev =>
-        prev.filter(thread => thread.threadId !== threadId)
-      );
-
-      if (threadId === currThreadId) createNewChat();
-      toast.success("Chat deleted");
+      if (response.ok) {
+        setAllThreads(prev => prev.filter(t => t.threadId !== id));
+        if (id === currThreadId) createNewChat();
+        toast.success("Deleted");
+      }
     } catch {
-      toast.error("Server error");
+      toast.error("Delete failed");
     }
   };
 
   return (
     <section className="sidebar">
-      <button onClick={createNewChat}>
-        <img
-          src={logo}
-          alt="ForgeChat logo"
-          className="logo"
-        />
-        <span>
-          <i className="fa-solid fa-pen-to-square"></i>
-        </span>
-      </button>
+      <div className="sidebar-header">
+        <div className="nav-top">
+          <img src={logoImg} alt="ForgeChat Logo" className="nav-logo-large" />
+          <i className="fa-regular fa-pen-to-square new-icon" onClick={createNewChat} title="New Chat"></i>
+        </div>
+        
+        <div className="menu-item-new" onClick={createNewChat}>
+          <div className="plus-icon-circle">
+             <i className="fa-solid fa-plus"></i>
+          </div>
+          <span>New chat</span>
+        </div>
+      </div>
 
-      <ul className="history">
-        {allThreads?.map(thread => (
-          <li
-            key={thread.threadId}
-            onClick={() => changeThread(thread.threadId)}
-            className={
-              thread.threadId === currThreadId ? "highlighted" : ""
-            }
-          >
-            {thread.title}
-            <i
-              className="fa-solid fa-trash"
-              onClick={(e) => {
-                e.stopPropagation();
-                deleteThread(thread.threadId);
-              }}
-            ></i>
-          </li>
-        ))}
-      </ul>
+      <div className="history-container">
+        <div className="section-label">Your chats</div>
+        <ul className="history-list">
+          {allThreads?.map((thread) => (
+            <li
+              key={thread.threadId}
+              onClick={() => changeThread(thread.threadId)}
+              className={thread.threadId === currThreadId ? "active" : ""}
+            >
+              <span className="title-text">
+                {thread.title || "Untitled Chat"}
+              </span>
+              <div className="thread-actions">
+                <i
+                  className="fa-solid fa-trash-can"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteThread(thread.threadId);
+                  }}
+                ></i>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
 
-      <div className="sign">
-        <p>By Suraj ♥</p>
+      <div className="sidebar-footer">
+        <div className="made-by-signature">
+          Made with <span className="heart-red">❤️</span> by Suraj
+        </div>
       </div>
     </section>
   );

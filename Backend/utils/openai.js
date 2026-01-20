@@ -1,6 +1,6 @@
 import "dotenv/config";
 
-const getOpenAIAPIResponse = async (message) => {
+const getOpenAIAPIResponse = async (messages) => {
   const options = {
     method: "POST",
     headers: {
@@ -11,9 +11,10 @@ const getOpenAIAPIResponse = async (message) => {
       model: "gpt-4o-mini",
       messages: [
         {
-          role: "user",
-          content: message || ""
-        }
+          role: "system",
+          content: "You are ForgeChat, a helpful AI assistant. Use the conversation history provided to maintain context."
+        },
+        ...messages
       ]
     })
   };
@@ -25,11 +26,17 @@ const getOpenAIAPIResponse = async (message) => {
     );
 
     const data = await response.json();
+
+    if (data.error) {
+      console.error("OpenAI Error:", data.error.message);
+      return "I'm sorry, I encountered an error processing that.";
+    }
+
     return data.choices[0].message.content;
 
   } catch (err) {
-    console.error(err);
-    return "Error from OpenAI";
+    console.error("Fetch Error:", err);
+    return "Error connecting to AI service.";
   }
 };
 

@@ -1,73 +1,115 @@
 import "./Chat.css";
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState, useEffect, useRef } from "react";
 import { MyContext } from "./MyContext";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.css";
+import toast from "react-hot-toast";
 
 function Chat() {
   const { newChat, prevChats, reply } = useContext(MyContext);
   const [latestReply, setLatestReply] = useState(null);
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [prevChats, latestReply]);
 
   useEffect(() => {
     if (reply === null) {
-      setLatestReply(null); //prevchat load
+      setLatestReply(null);
       return;
     }
-
-    if (!prevChats?.length) return;
-
-    const content = reply.split(" "); //individual words
-
+    const content = reply.split(" ");
     let idx = 0;
     const interval = setInterval(() => {
       setLatestReply(content.slice(0, idx + 1).join(" "));
-
       idx++;
       if (idx >= content.length) clearInterval(interval);
-    }, 40);
-
+    }, 30);
     return () => clearInterval(interval);
-  }, [prevChats, reply]);
+  }, [reply]);
+
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Copied to clipboard!", {
+      style: { background: "#333", color: "#fff", fontSize: "12px" },
+    });
+  };
+
+  // --- NEW: Markdown Component Overrides ---
+  const MarkdownComponents = {
+    pre: ({ children }) => {
+      // Extract the code string from the code element inside pre
+      const codeValue = children?.props?.children || "";
+      // Extract language if available (e.g., "language-javascript")
+      const className = children?.props?.className || "";
+      const lang = className.replace("language-", "") || "code";
+
+      return (
+        <div className="code-block-wrapper">
+          <div className="code-header">
+            <span className="code-lang">{lang}</span>
+            <button 
+              className="code-copy-btn" 
+              onClick={() => handleCopy(codeValue)}
+            >
+              <i className="fa-regular fa-copy"></i>
+              <span>Copy code</span>
+            </button>
+          </div>
+          <pre className={className}>
+            {children}
+          </pre>
+        </div>
+      );
+    }
+  };
 
   return (
-    <>
-      {newChat && <h1>Start a New Chat!</h1>}
-      <div className="chats">
-        {prevChats?.slice(0, -1).map((chat, idx) => (
-          <div
-            className={chat.role === "user" ? "userDiv" : "gptDiv"}
-            key={idx}
-          >
-            {chat.role === "user" ? (
-              <p className="userMessage">{chat.content}</p>
-            ) : (
-              <ReactMarkdown rehypePlugins={[rehypeHighlight]}>
-                {chat.content}
-              </ReactMarkdown>
+    <div className="chats">
+      {newChat && (
+        <div className="welcome-screen">
+          <h1>What can I help with?</h1>
+        </div>
+      )}
+      
+      {prevChats?.map((chat, idx) => (
+        <div key={idx} className={chat.role === "user" ? "userDiv" : "gptDiv"}>
+          <div className={chat.role === "user" ? "userMessage" : "gptMessage"}>
+            <ReactMarkdown 
+              components={MarkdownComponents} 
+              rehypePlugins={[rehypeHighlight]}
+            >
+              {chat.content}
+            </ReactMarkdown>
+            
+            {chat.role === "assistant" && (
+              <button className="copy-btn" onClick={() => handleCopy(chat.content)} title="Copy message">
+                <i className="fa-regular fa-copy"></i>
+              </button>
             )}
           </div>
-        ))}
+        </div>
+      ))}
 
-        {prevChats.length > 0 && (
-          <>
-            {latestReply === null ? (
-              <div className="gptDiv" key={"non-typing"}>
-                <ReactMarkdown rehypePlugins={[rehypeHighlight]}>
-                  {prevChats[prevChats.length - 1].content}
-                </ReactMarkdown>
-              </div>
-            ) : (
-              <div className="gptDiv" key={"typing"}>
-                <ReactMarkdown rehypePlugins={[rehypeHighlight]}>
-                  {latestReply}
-                </ReactMarkdown>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </>
+      {latestReply && (
+        <div className="gptDiv">
+          <div className="gptMessage">
+            <ReactMarkdown 
+              components={MarkdownComponents} 
+              rehypePlugins={[rehypeHighlight]}
+            >
+              {latestReply}
+            </ReactMarkdown>
+            <button className="copy-btn" onClick={() => handleCopy(latestReply)}>
+              <i className="fa-regular fa-copy"></i>
+            </button>
+          </div>
+        </div>
+      )}
+      <div ref={scrollRef} style={{ height: "120px" }} />
+    </div>
   );
 }
 
