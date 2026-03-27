@@ -1,18 +1,70 @@
 import express from "express";
+import mammoth from "mammoth";
 import Thread from "../models/Thread.js";
-import getOpenAIAPIResponse from "../utils/openai.js";
+import { createOpenAIResponse, streamOpenAIResponse } from "../utils/openai.js";
 import auth from "../utils/auth.js";
 
 const router = express.Router();
 
-// --- 1. TEST ROUTE ---
+const normalizeAttachment = async (attachment) => {
+  if (!attachment) return null;
+
+  const baseAttachment = {
+    kind: attachment.kind || "text",
+    name: attachment.name || "attachment",
+    mimeType: attachment.mimeType || "text/plain",
+    textContent: attachment.textContent || "",
+    fileData: attachment.fileData || "",
+    previewUrl: attachment.previewUrl || "",
+    size: attachment.size || 0,
+  };
+
+  if (baseAttachment.kind === "docx" && baseAttachment.fileData) {
+    const buffer = Buffer.from(baseAttachment.fileData, "base64");
+    const extracted = await mammoth.extractRawText({ buffer });
+    baseAttachment.textContent = extracted.value?.trim() || "";
+  }
+
+  return baseAttachment;
+};
+
+const sendSse = (res, payload) => {
+  res.write(`data: ${JSON.stringify(payload)}\n\n`);
+};
+
+const createOrUpdateThreadWithUserMessage = async (reqUserId, threadId, message, attachment) => {
+  let thread = await Thread.findOne({ threadId, userId: reqUserId });
+  const attachments = attachment ? [attachment] : [];
+
+  const newUserMessage = {
+    role: "user",
+    content: message,
+    attachments,
+  };
+
+  if (!thread) {
+    thread = new Thread({
+      threadId,
+      userId: reqUserId,
+      title: message.length > 35 ? `${message.substring(0, 35)}...` : message,
+      messages: [newUserMessage],
+    });
+  } else {
+    thread.messages.push(newUserMessage);
+  }
+
+  thread.updatedAt = new Date();
+  await thread.save();
+  return thread;
+};
+
 router.post("/test", auth, async (req, res) => {
   try {
     const thread = new Thread({
-      threadId: "test-" + Date.now(),
-      userId: req.userId, 
+      threadId: `test-${Date.now()}`,
+      userId: req.userId,
       title: "Test Thread",
-      messages: [{ role: "assistant", content: "Test successful! Database is connected." }]
+      messages: [{ role: "assistant", content: "Test successful! Database is connected." }],
     });
 
     const response = await thread.save();
@@ -23,11 +75,10 @@ router.post("/test", auth, async (req, res) => {
   }
 });
 
-// --- 2. GET ALL THREADS (SIDEBAR) ---
 router.get("/thread", auth, async (req, res) => {
   try {
     const threads = await Thread.find({ userId: req.userId })
-      .select("threadId title updatedAt") // Only fetch what the sidebar needs
+      .select("threadId title updatedAt")
       .sort({ updatedAt: -1 });
 
     res.json(threads);
@@ -37,7 +88,6 @@ router.get("/thread", auth, async (req, res) => {
   }
 });
 
-// --- 3. GET SINGLE THREAD ---
 router.get("/thread/:threadId", auth, async (req, res) => {
   const { threadId } = req.params;
   try {
@@ -54,7 +104,6 @@ router.get("/thread/:threadId", auth, async (req, res) => {
   }
 });
 
-// --- 4. DELETE THREAD ---
 router.delete("/thread/:threadId", auth, async (req, res) => {
   const { threadId } = req.params;
   try {
@@ -71,46 +120,85 @@ router.delete("/thread/:threadId", auth, async (req, res) => {
   }
 });
 
-// --- 5. CHAT ROUTE (THE BRAIN) ---
 router.post("/chat", auth, async (req, res) => {
-  const { threadId, message } = req.body;
+  const { threadId, message, attachment } = req.body;
 
   if (!threadId || !message) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
   try {
-    // A. Check for existing thread
-    let thread = await Thread.findOne({ threadId, userId: req.userId });
-    const newUserMessage = { role: "user", content: message };
+    const normalizedAttachment = await normalizeAttachment(attachment);
+    const thread = await createOrUpdateThreadWithUserMessage(
+      req.userId,
+      threadId,
+      message,
+      normalizedAttachment
+    );
 
-    if (!thread) {
-      // Create new thread if user started a new conversation
-      thread = new Thread({
-        threadId,
-        userId: req.userId,
-        title: message.substring(0, 35) + "...", 
-        messages: [newUserMessage]
-      });
-    } else {
-      // Push to existing history
-      thread.messages.push(newUserMessage);
-    }
-
-    // B. MEMORY LOGIC: Send history to AI
-    const contextWindow = thread.messages.slice(-10);
-    const assistantReply = await getOpenAIAPIResponse(contextWindow);
-
-    // C. Save AI Response
+    const assistantReply = await createOpenAIResponse(thread.messages.slice(-10));
     thread.messages.push({ role: "assistant", content: assistantReply });
     thread.updatedAt = new Date();
-    
     await thread.save();
 
     res.json({ reply: assistantReply });
   } catch (err) {
     console.error("Chat Logic Error:", err);
-    res.status(500).json({ error: "AI Processing Failed" });
+    res.status(500).json({ error: err.message || "AI Processing Failed" });
+  }
+});
+
+router.post("/chat/stream", auth, async (req, res) => {
+  const { threadId, message, attachment } = req.body;
+
+  if (!threadId || !message) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders?.();
+
+  try {
+    const normalizedAttachment = await normalizeAttachment(attachment);
+
+    if (normalizedAttachment) {
+      const statusMessage =
+        normalizedAttachment.kind === "image"
+          ? "Analyzing attached image..."
+          : normalizedAttachment.kind === "pdf"
+            ? "Reading attached PDF..."
+            : normalizedAttachment.kind === "docx"
+              ? "Extracting DOCX text..."
+              : "Preparing attachment...";
+      sendSse(res, { type: "status", status: statusMessage });
+    }
+
+    const thread = await createOrUpdateThreadWithUserMessage(
+      req.userId,
+      threadId,
+      message,
+      normalizedAttachment
+    );
+
+    const assistantReply = await streamOpenAIResponse(thread.messages.slice(-10), {
+      onDelta: (delta) => sendSse(res, { type: "delta", delta }),
+    });
+
+    thread.messages.push({ role: "assistant", content: assistantReply });
+    thread.updatedAt = new Date();
+    await thread.save();
+
+    sendSse(res, { type: "done", reply: assistantReply });
+  } catch (err) {
+    console.error("Streaming Chat Error:", err);
+    sendSse(res, {
+      type: "error",
+      message: err.message || "AI Processing Failed",
+    });
+  } finally {
+    res.end();
   }
 });
 

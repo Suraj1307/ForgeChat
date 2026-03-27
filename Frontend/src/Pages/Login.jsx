@@ -7,15 +7,18 @@ function Login() {
   const { setAuthMode } = useContext(MyContext);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
     try {
       const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
 
       const data = await res.json();
@@ -23,12 +26,14 @@ function Login() {
       if (res.ok) {
         localStorage.setItem("token", data.token);
         toast.success("Logged in successfully");
-        setTimeout(() => window.location.reload(), 600);
+        setTimeout(() => window.location.reload(), 400);
       } else {
         toast.error(data.error || "Login failed");
       }
     } catch {
       toast.error("Server error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -43,21 +48,34 @@ function Login() {
             className="loginInput"
             type="email"
             placeholder="Email"
+            value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-          <input
-            className="loginInput"
-            type="password"
-            placeholder="Password"
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <button className="loginButton">Login</button>
+
+          <div className="passwordField">
+            <input
+              className="loginInput"
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <button type="button" className="passwordToggle" onClick={() => setShowPassword((prev) => !prev)}>
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
+
+          <button className="loginButton" disabled={loading}>
+            {loading ? "Logging in..." : "Login"}
+          </button>
         </form>
 
+        <p className="authHint">Your session stays active for 7 days after login.</p>
+
         <p className="loginSwitch">
-          Don’t have an account?
+          Don't have an account?
           <span onClick={() => setAuthMode("signup")}> Sign up</span>
         </p>
       </div>

@@ -1,48 +1,68 @@
 import "./Chat.css";
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useEffect, useRef } from "react";
 import { MyContext } from "./MyContext";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
+import remarkGfm from "remark-gfm";
 import "highlight.js/styles/github-dark.css";
 import toast from "react-hot-toast";
 
-function Chat() {
-  const { newChat, prevChats, reply } = useContext(MyContext);
-  const [latestReply, setLatestReply] = useState(null);
+const downloadAttachment = (attachment) => {
+  if (attachment.previewUrl) {
+    const link = document.createElement("a");
+    link.href = attachment.previewUrl;
+    link.download = attachment.name;
+    link.click();
+    return;
+  }
+
+  if (attachment.fileData) {
+    const link = document.createElement("a");
+    link.href = `data:${attachment.mimeType};base64,${attachment.fileData}`;
+    link.download = attachment.name;
+    link.click();
+    return;
+  }
+
+  if (attachment.textContent) {
+    const blob = new Blob([attachment.textContent], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = attachment.name;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+};
+
+const downloadTextFile = (fileName, content) => {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
+function Chat({ suggestedPrompts = [] }) {
+  const { newChat, prevChats, streamReply, setPrompt } = useContext(MyContext);
   const scrollRef = useRef(null);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [prevChats, latestReply]);
+  }, [prevChats, streamReply]);
 
-  useEffect(() => {
-    if (reply === null) {
-      setLatestReply(null);
-      return;
-    }
-    const content = reply.split(" ");
-    let idx = 0;
-    const interval = setInterval(() => {
-      setLatestReply(content.slice(0, idx + 1).join(" "));
-      idx++;
-      if (idx >= content.length) clearInterval(interval);
-    }, 30);
-    return () => clearInterval(interval);
-  }, [reply]);
-
-  const handleCopy = (text) => {
-    navigator.clipboard.writeText(text);
+  const handleCopy = async (text) => {
+    await navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard!", {
       style: { background: "#333", color: "#fff", fontSize: "12px" },
     });
   };
 
-  // --- NEW: Markdown Component Overrides ---
   const MarkdownComponents = {
     pre: ({ children }) => {
-      // Extract the code string from the code element inside pre
       const codeValue = children?.props?.children || "";
-      // Extract language if available (e.g., "language-javascript")
       const className = children?.props?.className || "";
       const lang = className.replace("language-", "") || "code";
 
@@ -50,20 +70,32 @@ function Chat() {
         <div className="code-block-wrapper">
           <div className="code-header">
             <span className="code-lang">{lang}</span>
-            <button 
-              className="code-copy-btn" 
-              onClick={() => handleCopy(codeValue)}
-            >
-              <i className="fa-regular fa-copy"></i>
-              <span>Copy code</span>
-            </button>
+            <div className="code-actions">
+              <button className="code-copy-btn" onClick={() => handleCopy(codeValue)}>
+                <i className="fa-regular fa-copy"></i>
+                <span>Copy code</span>
+              </button>
+              <button
+                className="code-copy-btn"
+                onClick={() => downloadTextFile(`snippet.${lang === "code" ? "txt" : lang}`, codeValue)}
+              >
+                <i className="fa-solid fa-download"></i>
+                <span>Download</span>
+              </button>
+            </div>
           </div>
-          <pre className={className}>
-            {children}
-          </pre>
+          <pre className={className}>{children}</pre>
         </div>
       );
-    }
+    },
+    table: ({ children }) => (
+      <div className="table-wrapper">
+        <table>{children}</table>
+      </div>
+    ),
+    input: ({ checked, disabled, ...props }) => (
+      <input {...props} checked={checked} disabled={disabled} readOnly className="markdown-checkbox" />
+    ),
   };
 
   return (
@@ -71,40 +103,94 @@ function Chat() {
       {newChat && (
         <div className="welcome-screen">
           <h1>What can I help with?</h1>
+          <div className="suggested-prompts">
+            {suggestedPrompts.map((item) => (
+              <button key={item} type="button" className="prompt-chip" onClick={() => setPrompt(item)}>
+                {item}
+              </button>
+            ))}
+          </div>
         </div>
       )}
-      
+
       {prevChats?.map((chat, idx) => (
         <div key={idx} className={chat.role === "user" ? "userDiv" : "gptDiv"}>
           <div className={chat.role === "user" ? "userMessage" : "gptMessage"}>
-            <ReactMarkdown 
-              components={MarkdownComponents} 
+            <ReactMarkdown
+              components={MarkdownComponents}
               rehypePlugins={[rehypeHighlight]}
+              remarkPlugins={[remarkGfm]}
             >
               {chat.content}
             </ReactMarkdown>
-            
+
+            {chat.attachments?.length > 0 && (
+              <div className="message-attachments">
+                {chat.attachments.map((attachment) =>
+                  attachment.kind === "image" && attachment.previewUrl ? (
+                    <button
+                      key={attachment.name}
+                      type="button"
+                      className="image-attachment"
+                      onClick={() => downloadAttachment(attachment)}
+                    >
+                      <img src={attachment.previewUrl} alt={attachment.name} />
+                      <span>{attachment.name}</span>
+                    </button>
+                  ) : (
+                    <button
+                      key={attachment.name}
+                      type="button"
+                      className="attachment-card"
+                      onClick={() => downloadAttachment(attachment)}
+                    >
+                      <i
+                        className={`fa-solid ${
+                          attachment.kind === "pdf"
+                            ? "fa-file-pdf"
+                            : attachment.kind === "docx"
+                              ? "fa-file-word"
+                              : "fa-file-lines"
+                        }`}
+                      ></i>
+                      <span>{attachment.name}</span>
+                    </button>
+                  )
+                )}
+              </div>
+            )}
+
             {chat.role === "assistant" && (
-              <button className="copy-btn" onClick={() => handleCopy(chat.content)} title="Copy message">
+              <button
+                type="button"
+                className="copy-btn"
+                onClick={() => handleCopy(chat.content)}
+                title="Copy message"
+                aria-label="Copy message"
+              >
                 <i className="fa-regular fa-copy"></i>
+                <span>Copy</span>
               </button>
             )}
           </div>
         </div>
       ))}
 
-      {latestReply && (
+      {streamReply && (
         <div className="gptDiv">
-          <div className="gptMessage">
-            <ReactMarkdown 
-              components={MarkdownComponents} 
+          <div className="gptMessage streaming-message">
+            <ReactMarkdown
+              components={MarkdownComponents}
               rehypePlugins={[rehypeHighlight]}
+              remarkPlugins={[remarkGfm]}
             >
-              {latestReply}
+              {streamReply}
             </ReactMarkdown>
-            <button className="copy-btn" onClick={() => handleCopy(latestReply)}>
-              <i className="fa-regular fa-copy"></i>
-            </button>
+            <div className="streaming-indicator">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
           </div>
         </div>
       )}

@@ -23,7 +23,7 @@ const ROOT_DIR = path.join(__dirname, "..");
 // =======================
 // Middleware
 // =======================
-app.use(express.json());
+app.use(express.json({ limit: "6mb" }));
 app.use(cors());
 
 // =======================
