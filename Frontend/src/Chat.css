@@ -8,7 +8,7 @@
     padding: 1rem 1rem 1.5rem;
     display: flex;
     flex-direction: column;
-    gap: 2.5rem;
+    gap: 2.7rem;
     scrollbar-width: none;
 }
 
@@ -23,7 +23,7 @@
     align-items: center;
     min-height: 50vh;
     width: 100%;
-    color: #ececec;
+    color: #f3f6fb;
     text-align: center;
     animation: fadeIn 0.6s ease-out;
     padding: 0 1rem;
@@ -39,25 +39,31 @@
 }
 
 .prompt-chip {
-    padding: 0.8rem 1rem;
+    padding: 0.85rem 1.1rem;
     border-radius: 999px;
     border: 1px solid #383838;
     background: #262626;
-    color: #e7e7e7;
+    color: #eef2f7;
     cursor: pointer;
-    transition: background-color 0.18s ease, transform 0.18s ease;
+    font-size: 0.95rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    transition: background-color 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
 }
 
 .prompt-chip:hover {
     background: #303030;
+    border-color: #4c4c4c;
     transform: translateY(-1px);
 }
 
 .welcome-screen h1 {
-    font-size: 2.5rem;
-    font-weight: 600;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 2.7rem;
+    font-weight: 700;
     opacity: 0.95;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.04em;
+    line-height: 1.05;
 }
 
 @keyframes fadeIn {
@@ -73,12 +79,13 @@
 
 .userMessage {
     background-color: #2f2f2f;
-    color: #ececec;
-    padding: 12px 20px;
+    color: #f3f6fb;
+    padding: 12px 18px;
     border-radius: 20px;
-    font-size: 0.95rem;
+    font-size: 0.96rem;
+    font-weight: 400;
     max-width: 85%;
-    line-height: 1.5;
+    line-height: 1.6;
     word-break: break-word;
 }
 
@@ -98,6 +105,8 @@
     border: 1px solid #464646;
     background: #252525;
     cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
 }
 
 .attachment-card:hover {
@@ -128,6 +137,8 @@
 .image-attachment span {
     text-align: left;
     word-break: break-word;
+    font-size: 0.9rem;
+    line-height: 1.45;
 }
 
 .gptDiv {
@@ -138,9 +149,9 @@
 
 .gptMessage {
     position: relative;
-    color: #d1d1d1;
+    color: #dce3ee;
     font-size: 1rem;
-    line-height: 1.7;
+    line-height: 1.72;
     width: 100%;
     padding-bottom: 44px;
     min-height: 50px;
@@ -153,11 +164,74 @@
 }
 
 .gptMessage p {
-    margin-bottom: 1rem;
+    margin: 0 0 1rem;
 }
 
 .gptMessage p:last-child {
     margin-bottom: 5px;
+}
+
+.gptMessage h1,
+.gptMessage h2,
+.gptMessage h3,
+.gptMessage h4 {
+    color: #f5f8fd;
+    line-height: 1.3;
+    margin: 1.35rem 0 0.75rem;
+    font-weight: 600;
+}
+
+.gptMessage h1 {
+    font-size: 1.7rem;
+}
+
+.gptMessage h2 {
+    font-size: 1.4rem;
+}
+
+.gptMessage h3 {
+    font-size: 1.15rem;
+}
+
+.gptMessage h4 {
+    font-size: 1rem;
+}
+
+.gptMessage strong {
+    color: #f2f5fa;
+    font-weight: 600;
+}
+
+.gptMessage em {
+    color: inherit;
+}
+
+.gptMessage ul,
+.gptMessage ol {
+    margin: 0 0 1.2rem;
+    padding-left: 1.4rem;
+}
+
+.gptMessage li {
+    margin-bottom: 0.45rem;
+}
+
+.gptMessage li::marker {
+    color: #b9c3d6;
+}
+
+.gptMessage blockquote {
+    margin: 1rem 0;
+    padding: 0 0 0 0.9rem;
+    border-left: 3px solid #4c87d9;
+    color: #c2cbda;
+}
+
+.gptMessage hr {
+    border: 0;
+    height: 1px;
+    background: #384255;
+    margin: 1.3rem 0;
 }
 
 .gptMessage table {
@@ -171,15 +245,21 @@
     border: 1px solid #3b3b3b;
     padding: 0.7rem 0.85rem;
     text-align: left;
+    font-size: 0.95rem;
+    line-height: 1.55;
 }
 
 .gptMessage th {
     background: #2b2b2b;
+    font-weight: 600;
+    color: #f5f7fb;
 }
 
 .table-wrapper {
     overflow-x: auto;
     margin: 1rem 0;
+    border: 1px solid #373737;
+    border-radius: 10px;
 }
 
 .markdown-checkbox {
@@ -195,7 +275,9 @@
     border-radius: 10px;
     color: #b4b4b4;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
     padding: 6px 10px;
     display: inline-flex;
     align-items: center;
@@ -251,8 +333,8 @@
 .code-block-wrapper {
     background: #0d0d0d;
     border: 1px solid #424242;
-    border-radius: 8px;
-    margin: 1.5rem 0;
+    border-radius: 10px;
+    margin: 1.3rem 0;
     overflow: hidden;
 }
 
@@ -262,9 +344,10 @@
     align-items: center;
     background: #2f2f2f;
     padding: 8px 16px;
-    color: #b4b4b4;
-    font-family: sans-serif;
-    font-size: 0.75rem;
+    color: #c4cada;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
     gap: 10px;
 }
 
@@ -276,6 +359,7 @@
 
 .code-lang {
     text-transform: lowercase;
+    font-family: "IBM Plex Mono", monospace;
 }
 
 .code-copy-btn {
@@ -308,11 +392,12 @@ pre {
 }
 
 code {
-    font-family: "Sometype Mono", monospace;
-    font-size: 0.9rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.89rem;
     background-color: #333;
-    padding: 2px 5px;
-    border-radius: 4px;
+    color: #f0f4fa;
+    padding: 2px 6px;
+    border-radius: 6px;
 }
 
 pre code {

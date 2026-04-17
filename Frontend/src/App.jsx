@@ -1,12 +1,11 @@
 import "./App.css";
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { v1 as uuidv1 } from "uuid";
 import Sidebar from "./Sidebar.jsx";
 import ChatWindow from "./ChatWindow.jsx";
 import { MyContext } from "./MyContext.jsx";
 
-const Login = lazy(() => import("./Pages/Login.jsx"));
-const Signup = lazy(() => import("./Pages/Signup.jsx"));
+const AuthPage = lazy(() => import("./Pages/AuthPage.jsx"));
 
 function App() {
   const [prompt, setPrompt] = useState("");
@@ -19,6 +18,73 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [attachedFile, setAttachedFile] = useState(null);
   const [authMode, setAuthMode] = useState("login");
+  const [authToken, setAuthToken] = useState(() => localStorage.getItem("token") || "");
+  const [authUser, setAuthUser] = useState(null);
+  const [threadsRevision, setThreadsRevision] = useState(0);
+  const [cancelActiveStream, setCancelActiveStream] = useState(() => () => {});
+
+  const resetChatState = () => {
+    setPrompt("");
+    setReply(null);
+    setStreamReply("");
+    setPrevChats([]);
+    setAllThreads([]);
+    setAttachedFile(null);
+    setNewChat(true);
+    setCurrThreadId(uuidv1());
+    setIsSidebarOpen(false);
+  };
+
+  const login = useCallback(({ token, user }) => {
+    localStorage.setItem("token", token);
+    setAuthToken(token);
+    setAuthUser(user || null);
+    setAuthMode("login");
+  }, []);
+
+  const logout = useCallback(() => {
+    cancelActiveStream();
+    localStorage.removeItem("token");
+    setAuthToken("");
+    setAuthUser(null);
+    resetChatState();
+  }, [cancelActiveStream]);
+
+  const bumpThreadsRevision = () => {
+    setThreadsRevision((prev) => prev + 1);
+  };
+
+  useEffect(() => {
+    if (!authToken) return undefined;
+
+    let isActive = true;
+
+    fetch("/api/me", {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Session expired");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (isActive) {
+          setAuthUser(data);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          logout();
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [authToken, logout]);
 
   const providerValues = {
     prompt,
@@ -41,23 +107,29 @@ function App() {
     setIsSidebarOpen,
     attachedFile,
     setAttachedFile,
+    authToken,
+    authUser,
+    setAuthUser,
+    isAuthenticated: !!authToken,
+    login,
+    logout,
+    threadsRevision,
+    bumpThreadsRevision,
+    cancelActiveStream,
+    setCancelActiveStream,
   };
-
-  const isAuthenticated = !!localStorage.getItem("token");
 
   return (
     <div className="app">
       <MyContext.Provider value={providerValues}>
         <Suspense fallback={<div className="screenLoader">Loading ForgeChat...</div>}>
-          {isAuthenticated ? (
+          {authToken ? (
             <div className="mainLayout">
               <Sidebar />
               <ChatWindow />
             </div>
-          ) : authMode === "login" ? (
-            <Login />
           ) : (
-            <Signup />
+            <AuthPage />
           )}
         </Suspense>
       </MyContext.Provider>

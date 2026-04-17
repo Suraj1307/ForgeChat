@@ -19,12 +19,31 @@ const __dirname = path.dirname(__filename);
 
 // Project root (ForgeChat/)
 const ROOT_DIR = path.join(__dirname, "..");
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",").map((origin) => origin.trim()).filter(Boolean)
+  : [];
 
 // =======================
 // Middleware
 // =======================
 app.use(express.json({ limit: "6mb" }));
-app.use(cors());
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || !allowedOrigins.length || process.env.NODE_ENV !== "production") {
+        callback(null, true);
+        return;
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Blocked by CORS"));
+    },
+  })
+);
 
 // =======================
 // API Routes

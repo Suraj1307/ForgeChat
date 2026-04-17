@@ -18,23 +18,32 @@ const userSchema = new mongoose.Schema(
 
     password: {
       type: String,
-      required: true,
       minlength: 8,
       select: false
+    },
+
+    avatarUrl: {
+      type: String,
+      default: ""
     }
   },
   { timestamps: true }
 );
 
+userSchema.path("password").validate(function (value) {
+  return typeof value === "string" && value.length >= 8;
+}, "Password must be at least 8 characters");
+
 // hash password before save
 userSchema.pre("save", async function () {
-  if (!this.isModified("password")) return;
+  if (!this.password || !this.isModified("password")) return;
   this.password = await bcrypt.hash(this.password, 10);
 });
 
 
 // compare password
 userSchema.methods.comparePassword = async function (password) {
+  if (!this.password) return false;
   return bcrypt.compare(password, this.password);
 };
 

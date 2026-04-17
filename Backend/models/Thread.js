@@ -61,7 +61,6 @@ const ThreadSchema = new mongoose.Schema(
     threadId: {
       type: String,
       required: true,
-      unique: true,
       index: true,
     },
     userId: {
@@ -81,5 +80,7 @@ const ThreadSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+ThreadSchema.index({ userId: 1, threadId: 1 }, { unique: true });
 
 export default mongoose.model("Thread", ThreadSchema);

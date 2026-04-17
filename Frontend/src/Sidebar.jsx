@@ -1,5 +1,5 @@
 import "./Sidebar.css";
-import { useContext, useEffect } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { MyContext } from "./MyContext.jsx";
 import { v1 as uuidv1 } from "uuid";
 import toast from "react-hot-toast";
@@ -19,29 +19,47 @@ function Sidebar() {
     isSidebarOpen,
     setIsSidebarOpen,
     setAttachedFile,
+    authToken,
+    logout,
+    threadsRevision,
+    cancelActiveStream,
   } = useContext(MyContext);
+  const [threadsLoading, setThreadsLoading] = useState(false);
+  const [threadsError, setThreadsError] = useState("");
 
-  const getAllThreads = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
+  const getAllThreads = useCallback(async () => {
+    if (!authToken) return;
+
+    setThreadsLoading(true);
+    setThreadsError("");
 
     try {
       const response = await fetch("/api/thread", {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
+
+      if (response.status === 401) {
+        logout();
+        return;
+      }
 
       const res = await response.json();
       if (response.ok && Array.isArray(res)) {
         setAllThreads(res);
+      } else {
+        setThreadsError("Could not load your chats.");
       }
     } catch (err) {
       console.error("Sidebar load error:", err);
+      setThreadsError("Could not load your chats.");
+    } finally {
+      setThreadsLoading(false);
     }
-  };
+  }, [authToken, logout, setAllThreads]);
 
   useEffect(() => {
     getAllThreads();
-  }, [currThreadId]);
+  }, [getAllThreads, threadsRevision]);
 
   useEffect(() => {
     if (!isSidebarOpen) return undefined;
@@ -62,6 +80,7 @@ function Sidebar() {
   };
 
   const createNewChat = () => {
+    cancelActiveStream();
     setNewChat(true);
     setCurrThreadId(uuidv1());
     setPrevChats([]);
@@ -75,13 +94,19 @@ function Sidebar() {
       return;
     }
 
-    const token = localStorage.getItem("token");
+    cancelActiveStream();
     setCurrThreadId(id);
 
     try {
       const response = await fetch(`/api/thread/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
+
+      if (response.status === 401) {
+        logout();
+        return;
+      }
+
       const res = await response.json();
       if (response.ok) {
         setPrevChats(res);
@@ -95,12 +120,18 @@ function Sidebar() {
   };
 
   const deleteThread = async (id) => {
-    const token = localStorage.getItem("token");
+    cancelActiveStream();
     try {
       const response = await fetch(`/api/thread/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
+
+      if (response.status === 401) {
+        logout();
+        return;
+      }
+
       if (response.ok) {
         setAllThreads((prev) => prev.filter((t) => t.threadId !== id));
         if (id === currThreadId) createNewChat();
@@ -155,28 +186,51 @@ function Sidebar() {
 
         <div className="history-container">
           <div className="section-label">Your chats</div>
-          <ul className="history-list">
-            {allThreads?.map((thread) => (
-              <li
-                key={thread.threadId}
-                onClick={() => changeThread(thread.threadId)}
-                className={thread.threadId === currThreadId ? "active" : ""}
-              >
-                <span className="title-text">{thread.title || "Untitled Chat"}</span>
-                <button
-                  type="button"
-                  className="thread-action-button"
-                  aria-label={`Delete ${thread.title || "chat"}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteThread(thread.threadId);
-                  }}
+          {threadsLoading ? (
+            <div className="historyState">
+              <div className="historyLoadingDots" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <p>Loading your chats...</p>
+            </div>
+          ) : threadsError ? (
+            <div className="historyState error">
+              <p>{threadsError}</p>
+              <button type="button" className="historyRetryButton" onClick={getAllThreads}>
+                Try again
+              </button>
+            </div>
+          ) : allThreads?.length ? (
+            <ul className="history-list">
+              {allThreads.map((thread) => (
+                <li
+                  key={thread.threadId}
+                  onClick={() => changeThread(thread.threadId)}
+                  className={thread.threadId === currThreadId ? "active" : ""}
                 >
-                  <i className="fa-solid fa-trash-can"></i>
-                </button>
-              </li>
-            ))}
-          </ul>
+                  <span className="title-text">{thread.title || "Untitled Chat"}</span>
+                  <button
+                    type="button"
+                    className="thread-action-button"
+                    aria-label={`Delete ${thread.title || "chat"}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteThread(thread.threadId);
+                    }}
+                  >
+                    <i className="fa-solid fa-trash-can"></i>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="historyState">
+              <p>No chats yet.</p>
+              <span>Start a new conversation to see it here.</span>
+            </div>
+          )}
         </div>
 
         <div className="sidebar-footer">

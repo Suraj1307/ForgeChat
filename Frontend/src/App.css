@@ -1,6 +1,6 @@
 * {
   color: #ececec;
-  font-family: Roboto, "Open Sans", "Helvetica Neue", sans-serif;
+  font-family: "Inter", "Segoe UI", sans-serif;
   box-sizing: border-box;
 }
 
@@ -14,6 +14,11 @@ body {
   margin: 0;
   padding: 0;
   background: #212121;
+  color: #ececec;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .app {
@@ -30,7 +35,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 

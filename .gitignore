@@ -5,6 +5,7 @@ Backend/.env
 # Frontend
 Frontend/node_modules/
 Frontend/dist/
+Frontend/.env
 
 # Root
 node_modules/

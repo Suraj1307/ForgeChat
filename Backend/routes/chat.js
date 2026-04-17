@@ -1,35 +1,32 @@
 import express from "express";
-import mammoth from "mammoth";
 import Thread from "../models/Thread.js";
 import { createOpenAIResponse, streamOpenAIResponse } from "../utils/openai.js";
 import auth from "../utils/auth.js";
+import { normalizeIncomingAttachment } from "../utils/attachments.js";
 
 const router = express.Router();
 
-const normalizeAttachment = async (attachment) => {
-  if (!attachment) return null;
-
-  const baseAttachment = {
-    kind: attachment.kind || "text",
-    name: attachment.name || "attachment",
-    mimeType: attachment.mimeType || "text/plain",
-    textContent: attachment.textContent || "",
-    fileData: attachment.fileData || "",
-    previewUrl: attachment.previewUrl || "",
-    size: attachment.size || 0,
-  };
-
-  if (baseAttachment.kind === "docx" && baseAttachment.fileData) {
-    const buffer = Buffer.from(baseAttachment.fileData, "base64");
-    const extracted = await mammoth.extractRawText({ buffer });
-    baseAttachment.textContent = extracted.value?.trim() || "";
+const sendSse = (res, payload) => {
+  if (res.writableEnded || res.destroyed) {
+    return;
   }
-
-  return baseAttachment;
+  res.write(`data: ${JSON.stringify(payload)}\n\n`);
 };
 
-const sendSse = (res, payload) => {
-  res.write(`data: ${JSON.stringify(payload)}\n\n`);
+const buildMessagesForModel = (thread, normalizedAttachment) => {
+  if (!normalizedAttachment?.processingAttachment || !thread.messages.length) {
+    return thread.messages.slice(-10);
+  }
+
+  const messagesForModel = [
+    ...thread.messages.slice(0, -1),
+    {
+      ...thread.messages.at(-1),
+      attachments: [normalizedAttachment.processingAttachment],
+    },
+  ];
+
+  return messagesForModel.slice(-10);
 };
 
 const createOrUpdateThreadWithUserMessage = async (reqUserId, threadId, message, attachment) => {
@@ -123,20 +120,20 @@ router.delete("/thread/:threadId", auth, async (req, res) => {
 router.post("/chat", auth, async (req, res) => {
   const { threadId, message, attachment } = req.body;
 
-  if (!threadId || !message) {
+  if (!threadId || !String(message || "").trim()) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
   try {
-    const normalizedAttachment = await normalizeAttachment(attachment);
+    const normalizedAttachment = await normalizeIncomingAttachment(attachment);
     const thread = await createOrUpdateThreadWithUserMessage(
       req.userId,
       threadId,
-      message,
-      normalizedAttachment
+      String(message).trim(),
+      normalizedAttachment?.storedAttachment || null
     );
 
-    const assistantReply = await createOpenAIResponse(thread.messages.slice(-10));
+    const assistantReply = await createOpenAIResponse(buildMessagesForModel(thread, normalizedAttachment));
     thread.messages.push({ role: "assistant", content: assistantReply });
     thread.updatedAt = new Date();
     await thread.save();
@@ -151,7 +148,7 @@ router.post("/chat", auth, async (req, res) => {
 router.post("/chat/stream", auth, async (req, res) => {
   const { threadId, message, attachment } = req.body;
 
-  if (!threadId || !message) {
+  if (!threadId || !String(message || "").trim()) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
@@ -160,16 +157,26 @@ router.post("/chat/stream", auth, async (req, res) => {
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders?.();
 
+  const streamController = new AbortController();
+  let clientDisconnected = false;
+  const handleClientDisconnect = () => {
+    clientDisconnected = true;
+    streamController.abort(new Error("Client disconnected."));
+  };
+
+  req.on("close", handleClientDisconnect);
+
   try {
-    const normalizedAttachment = await normalizeAttachment(attachment);
+    const normalizedAttachment = await normalizeIncomingAttachment(attachment);
+    const safeMessage = String(message).trim();
 
     if (normalizedAttachment) {
       const statusMessage =
-        normalizedAttachment.kind === "image"
+        normalizedAttachment.processingAttachment.kind === "image"
           ? "Analyzing attached image..."
-          : normalizedAttachment.kind === "pdf"
+          : normalizedAttachment.processingAttachment.kind === "pdf"
             ? "Reading attached PDF..."
-            : normalizedAttachment.kind === "docx"
+            : normalizedAttachment.processingAttachment.kind === "docx"
               ? "Extracting DOCX text..."
               : "Preparing attachment...";
       sendSse(res, { type: "status", status: statusMessage });
@@ -178,13 +185,23 @@ router.post("/chat/stream", auth, async (req, res) => {
     const thread = await createOrUpdateThreadWithUserMessage(
       req.userId,
       threadId,
-      message,
-      normalizedAttachment
+      safeMessage,
+      normalizedAttachment?.storedAttachment || null
     );
 
-    const assistantReply = await streamOpenAIResponse(thread.messages.slice(-10), {
-      onDelta: (delta) => sendSse(res, { type: "delta", delta }),
-    });
+    const assistantReply = await streamOpenAIResponse(
+      buildMessagesForModel(thread, normalizedAttachment),
+      {
+        onDelta: (delta) => sendSse(res, { type: "delta", delta }),
+      },
+      {
+        signal: streamController.signal,
+      }
+    );
+
+    if (clientDisconnected) {
+      return;
+    }
 
     thread.messages.push({ role: "assistant", content: assistantReply });
     thread.updatedAt = new Date();
@@ -192,13 +209,20 @@ router.post("/chat/stream", auth, async (req, res) => {
 
     sendSse(res, { type: "done", reply: assistantReply });
   } catch (err) {
-    console.error("Streaming Chat Error:", err);
-    sendSse(res, {
-      type: "error",
-      message: err.message || "AI Processing Failed",
-    });
+    if (!clientDisconnected) {
+      console.error("Streaming Chat Error:", err);
+    }
+    if (!clientDisconnected) {
+      sendSse(res, {
+        type: "error",
+        message: err.message || "AI Processing Failed",
+      });
+    }
   } finally {
-    res.end();
+    req.off("close", handleClientDisconnect);
+    if (!res.writableEnded) {
+      res.end();
+    }
   }
 });
 

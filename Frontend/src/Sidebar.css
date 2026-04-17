@@ -78,8 +78,9 @@
     padding: 12px 14px;
     border-radius: 12px;
     cursor: pointer;
-    font-size: 0.92rem;
-    font-weight: 500;
+    font-size: 0.93rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
     width: 100%;
     border: 1px solid #2f2f2f;
     background: #1e1e1e;
@@ -101,10 +102,12 @@
 }
 
 .section-label {
-    font-size: 0.75rem;
+    font-size: 0.74rem;
     color: #b4b4b4;
     padding: 20px 12px 8px;
-    font-weight: 600;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
 }
 
 .history-list {
@@ -113,12 +116,83 @@
     margin: 0;
 }
 
+.historyState {
+    display: grid;
+    gap: 10px;
+    padding: 18px 12px;
+    margin-top: 4px;
+    border-radius: 14px;
+    background: #1c1c1c;
+    border: 1px solid #2a2a2a;
+    text-align: left;
+}
+
+.historyState p,
+.historyState span {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.historyState p {
+    color: #e6ebf5;
+    font-size: 0.94rem;
+    font-weight: 600;
+}
+
+.historyState span {
+    color: #8f9bb0;
+    font-size: 0.84rem;
+}
+
+.historyState.error {
+    border-color: rgba(255, 92, 92, 0.16);
+    background: rgba(255, 92, 92, 0.06);
+}
+
+.historyLoadingDots {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.historyLoadingDots span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #75a6ff;
+    animation: sidebarPulse 1s infinite ease-in-out;
+}
+
+.historyLoadingDots span:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.historyLoadingDots span:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.historyRetryButton {
+    width: fit-content;
+    min-height: 38px;
+    padding: 0 14px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #eef3fb;
+    cursor: pointer;
+}
+
+.historyRetryButton:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
 .history-list li {
     padding: 12px;
     border-radius: 12px;
     margin: 4px 0;
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 0.94rem;
+    font-weight: 500;
+    line-height: 1.4;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -171,9 +245,9 @@
 
 .made-by-signature {
     text-align: center;
-    font-size: 0.8rem;
+    font-size: 0.81rem;
     color: #8e8e8e;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.02em;
 }
 
 .heart-red {
@@ -186,6 +260,17 @@
     0% { transform: scale(1); }
     50% { transform: scale(1.15); }
     100% { transform: scale(1); }
+}
+
+@keyframes sidebarPulse {
+    0%, 80%, 100% {
+        opacity: 0.35;
+        transform: scale(0.85);
+    }
+    40% {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 @media (max-width: 900px) {

@@ -1,5 +1,6 @@
 import "./ChatWindow.css";
-import { lazy, Suspense, useContext, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { v1 as uuidv1 } from "uuid";
 import { MyContext } from "./MyContext.jsx";
 import { ScaleLoader } from "react-spinners";
 import toast from "react-hot-toast";
@@ -164,12 +165,38 @@ const readSseStream = async (stream, onEvent) => {
   }
 };
 
+const getUserInitials = (name = "", email = "") => {
+  const trimmedName = String(name || "").trim();
+
+  if (trimmedName) {
+    const parts = trimmedName.split(/\s+/).filter(Boolean);
+    const first = parts[0]?.[0] || "";
+    const last = parts.length > 1 ? parts[parts.length - 1]?.[0] || "" : parts[0]?.[1] || "";
+    return `${first}${last}`.trim().toUpperCase() || "U";
+  }
+
+  const fallback = String(email || "").trim();
+  return (fallback.slice(0, 2) || "U").toUpperCase();
+};
+
+const formatJoinedDate = (value) => {
+  if (!value) return "Recently joined";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Recently joined";
+
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+};
+
 function ChatWindow() {
   const {
     prompt,
     setPrompt,
     setReply,
-    streamReply,
     setStreamReply,
     currThreadId,
     setPrevChats,
@@ -178,34 +205,26 @@ function ChatWindow() {
     setIsSidebarOpen,
     attachedFile,
     setAttachedFile,
+    authUser,
+    authToken,
+    logout,
+    bumpThreadsRevision,
+    setCancelActiveStream,
   } = useContext(MyContext);
 
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [user, setUser] = useState(null);
   const [uploadState, setUploadState] = useState("idle");
   const [statusMessage, setStatusMessage] = useState("");
   const [composerError, setComposerError] = useState("");
   const profileRef = useRef(null);
+  const profileModalRef = useRef(null);
+  const profileCloseButtonRef = useRef(null);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    fetch("/api/me", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error();
-        return res.json();
-      })
-      .then((data) => setUser(data))
-      .catch(() => console.log("User not loaded"));
-  }, []);
+  const streamControllerRef = useRef(null);
+  const activeRequestIdRef = useRef(0);
+  const pendingMessageIdRef = useRef(null);
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -230,6 +249,65 @@ function ChatWindow() {
       document.removeEventListener("touchstart", handlePointerDown);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    profileCloseButtonRef.current?.focus();
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsOpen(false);
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const focusableElements = profileModalRef.current?.querySelectorAll(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+
+      if (!focusableElements?.length) return;
+
+      const first = focusableElements[0];
+      const last = focusableElements[focusableElements.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
+  const cancelActiveRequest = useCallback(() => {
+    activeRequestIdRef.current += 1;
+    pendingMessageIdRef.current = null;
+    streamControllerRef.current?.abort();
+    streamControllerRef.current = null;
+    setLoading(false);
+    setStreamReply("");
+    setStatusMessage("");
+    setUploadState((prev) => (attachedFile && prev !== "reading" ? "ready" : "idle"));
+  }, [attachedFile, setStreamReply]);
+
+  useEffect(() => {
+    setCancelActiveStream(() => cancelActiveRequest);
+
+    return () => {
+      setCancelActiveStream(() => () => {});
+      streamControllerRef.current?.abort();
+    };
+  }, [cancelActiveRequest, setCancelActiveStream]);
 
   const clearAttachment = () => {
     setAttachedFile(null);
@@ -279,6 +357,9 @@ function ChatWindow() {
     if (!prompt.trim() || loading || uploadState === "reading") return;
 
     const userMsg = prompt.trim();
+    const requestId = activeRequestIdRef.current + 1;
+    const pendingMessageId = uuidv1();
+    const nextAttachment = attachedFile;
     const attachmentPayload = attachedFile
       ? {
           kind: attachedFile.kind,
@@ -291,6 +372,8 @@ function ChatWindow() {
         }
       : null;
 
+    activeRequestIdRef.current = requestId;
+    pendingMessageIdRef.current = pendingMessageId;
     setPrompt("");
     setLoading(true);
     setNewChat(false);
@@ -303,29 +386,38 @@ function ChatWindow() {
     setPrevChats((prev) => [
       ...prev,
       {
+        id: pendingMessageId,
         role: "user",
         content: userMsg,
-        attachments: attachedFile ? [attachedFile] : [],
+        attachments: nextAttachment ? [nextAttachment] : [],
+        status: "pending",
       },
     ]);
 
-    const token = localStorage.getItem("token");
-
     try {
+      const controller = new AbortController();
+      streamControllerRef.current = controller;
+
       const response = await fetch("/api/chat/stream", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           message: userMsg,
           threadId: currThreadId,
           attachment: attachmentPayload,
         }),
+        signal: controller.signal,
       });
 
       if (!response.ok || !response.body) {
+        if (response.status === 401) {
+          logout();
+          throw new Error("Session expired. Please log in again.");
+        }
+
         const errorData = await response.json().catch(() => null);
         throw new Error(errorData?.error || "Failed to start streaming response.");
       }
@@ -333,6 +425,8 @@ function ChatWindow() {
       let finalReply = "";
 
       await readSseStream(response.body, (event) => {
+        if (activeRequestIdRef.current !== requestId) return;
+
         if (event.type === "status") {
           setStatusMessage(event.status);
         }
@@ -344,11 +438,19 @@ function ChatWindow() {
 
         if (event.type === "done") {
           const completedReply = event.reply || finalReply;
-          setPrevChats((prev) => [...prev, { role: "assistant", content: completedReply }]);
+          streamControllerRef.current = null;
+          pendingMessageIdRef.current = null;
+          setPrevChats((prev) => [
+            ...prev.map((chat) =>
+              chat.id === pendingMessageId ? { ...chat, status: "sent" } : chat
+            ),
+            { id: uuidv1(), role: "assistant", content: completedReply },
+          ]);
           setStreamReply("");
           clearAttachment();
           setStatusMessage("");
           setUploadState("idle");
+          bumpThreadsRevision();
         }
 
         if (event.type === "error") {
@@ -357,14 +459,29 @@ function ChatWindow() {
       });
     } catch (err) {
       console.error(err);
+      streamControllerRef.current = null;
+      const isAbort = err.name === "AbortError";
+      if (isAbort || activeRequestIdRef.current !== requestId) {
+        return;
+      }
+
       const message = err.message || "Something went wrong";
       setComposerError(message);
       setStatusMessage("");
-      setUploadState(attachedFile ? "ready" : "idle");
+      setUploadState(nextAttachment ? "ready" : "idle");
       setStreamReply("");
+
+      setPrevChats((prev) =>
+        prev.map((chat) =>
+          chat.id === pendingMessageId ? { ...chat, status: "failed", error: message } : chat
+        )
+      );
+
       toast.error(message);
     } finally {
-      setLoading(false);
+      if (activeRequestIdRef.current === requestId) {
+        setLoading(false);
+      }
     }
   };
 
@@ -373,9 +490,17 @@ function ChatWindow() {
   };
 
   const handleLogout = () => {
-    localStorage.clear();
+    logout();
     toast.success("Logged out");
-    window.location.href = "/login";
+  };
+
+  const handleCopyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText(authUser?.email || "");
+      toast.success("Email copied");
+    } catch {
+      toast.error("Could not copy email");
+    }
   };
 
   const handleComposerKeyDown = (e) => {
@@ -393,6 +518,8 @@ function ChatWindow() {
         : attachedFile?.kind === "docx"
           ? "fa-file-word"
           : "fa-file-lines";
+  const userInitials = getUserInitials(authUser?.name, authUser?.email);
+  const joinedLabel = formatJoinedDate(authUser?.createdAt);
 
   return (
     <div className="chatWindow" data-theme="dark">
@@ -424,24 +551,76 @@ function ChatWindow() {
           }}
         >
           <span className="userIcon">
-            <i className="fa-solid fa-user"></i>
+            {authUser?.avatarUrl ? (
+              <img src={authUser.avatarUrl} alt={`${authUser.name || "User"} avatar`} className="userAvatarImage" />
+            ) : (
+              <span className="userInitials">{userInitials}</span>
+            )}
           </span>
 
           {isOpen && (
-            <div className="dropDown">
-              <div className="dropDownHeader">
-                <i className="fa-solid fa-user"></i>
-                <div>
-                  <p className="userName">{user?.name || "User"}</p>
-                  <p className="userEmail">{user?.email || "No email"}</p>
+            <>
+              <button
+                type="button"
+                className="profileModalBackdrop"
+                aria-label="Close profile"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsOpen(false);
+                }}
+              />
+              <div
+                className="profileModal"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Profile details"
+                ref={profileModalRef}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  className="profileModalClose"
+                  ref={profileCloseButtonRef}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsOpen(false);
+                  }}
+                  aria-label="Close profile"
+                >
+                  <i className="fa-solid fa-xmark"></i>
+                </button>
+
+                <div className="profileModalAvatar">
+                  {authUser?.avatarUrl ? (
+                    <img
+                      src={authUser.avatarUrl}
+                      alt={`${authUser.name || "User"} avatar`}
+                      className="dropDownAvatarImage"
+                    />
+                  ) : (
+                    <span className="dropDownAvatarInitials">{userInitials}</span>
+                  )}
+                </div>
+
+                <div className="profileModalBody">
+                  <p className="profileModalEyebrow">ForgeChat Profile</p>
+                  <h2 className="profileModalName">{authUser?.name || "User"}</h2>
+                  <p className="profileModalEmail">{authUser?.email || "No email"}</p>
+                  <p className="profileModalMeta">Joined {joinedLabel}</p>
+                </div>
+
+                <div className="profileModalActions">
+                  <button type="button" className="profileSecondaryButton" onClick={handleCopyEmail}>
+                    <i className="fa-regular fa-copy"></i>
+                    Copy email
+                  </button>
+                  <button type="button" className="dropDownItem logout profileLogoutButton" onClick={handleLogout}>
+                    <i className="fa-solid fa-arrow-right-from-bracket"></i>
+                    Log out
+                  </button>
                 </div>
               </div>
-
-              <button type="button" className="dropDownItem logout" onClick={handleLogout}>
-                <i className="fa-solid fa-arrow-right-from-bracket"></i>
-                Log out
-              </button>
-            </div>
+            </>
           )}
         </div>
       </div>
@@ -515,6 +694,7 @@ function ChatWindow() {
         <p className="info">
           Press Enter to send, Shift + Enter for a new line. Supports text/code files, PDF, DOCX, and common images.
         </p>
+        {statusMessage && <p className="info">{statusMessage}</p>}
       </div>
     </div>
   );

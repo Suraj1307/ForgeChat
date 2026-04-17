@@ -1,84 +1,150 @@
-import { useState, useContext } from "react";
+import { useContext, useMemo, useState } from "react";
 import { MyContext } from "../MyContext";
-import toast from "react-hot-toast";
 import "./Login.css";
 
-function Login() {
-  const { setAuthMode } = useContext(MyContext);
+const validateLogin = ({ email, password }) => {
+  const errors = {};
+
+  if (!email.trim()) {
+    errors.email = "Email is required.";
+  } else if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+    errors.email = "Enter a valid email address.";
+  }
+
+  if (!password) {
+    errors.password = "Password is required.";
+  }
+
+  return errors;
+};
+
+function Login({ onSwitchMode }) {
+  const { login } = useContext(MyContext);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [touched, setTouched] = useState({});
+  const [status, setStatus] = useState({ type: "", message: "" });
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const errors = useMemo(() => validateLogin({ email, password }), [email, password]);
+
+  const setFieldTouched = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setTouched({ email: true, password: true });
+
+    if (Object.keys(errors).length > 0) {
+      setStatus({ type: "error", message: "Please fix the highlighted fields." });
+      return;
+    }
+
     setLoading(true);
+    setStatus({ type: "", message: "" });
 
     try {
-      const res = await fetch("/api/login", {
+      const response = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password,
+          rememberMe,
+        }),
       });
 
-      const data = await res.json();
+      const data = await response.json();
 
-      if (res.ok) {
-        localStorage.setItem("token", data.token);
-        toast.success("Logged in successfully");
-        setTimeout(() => window.location.reload(), 400);
-      } else {
-        toast.error(data.error || "Login failed");
+      if (!response.ok) {
+        throw new Error(data.error || "Login failed.");
       }
-    } catch {
-      toast.error("Server error");
+
+      setStatus({ type: "success", message: "Signed in successfully." });
+      login({ token: data.token, user: data.user });
+    } catch (error) {
+      setStatus({ type: "error", message: error.message || "Something went wrong." });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="loginContainer">
-      <div className="loginCard">
+    <div className="loginPanel">
+      <div className="loginHeader">
         <h2>Welcome back</h2>
-        <p className="loginSub">Login to your ForgeChat account</p>
+        <p>Sign in to continue your chats, files, and saved workspace.</p>
+      </div>
 
-        <form className="loginForm" onSubmit={handleLogin}>
+      <form className="loginForm" onSubmit={handleSubmit} noValidate>
+        <label className="loginField">
+          <span>Email</span>
           <input
-            className="loginInput"
             type="email"
-            placeholder="Email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setStatus({ type: "", message: "" });
+            }}
+            onBlur={() => setFieldTouched("email")}
+            placeholder="you@example.com"
+            className={touched.email && errors.email ? "hasError" : ""}
           />
+          {touched.email && errors.email && <small>{errors.email}</small>}
+        </label>
 
-          <div className="passwordField">
+        <label className="loginField">
+          <span>Password</span>
+          <div className="loginPasswordWrap">
             <input
-              className="loginInput"
               type={showPassword ? "text" : "password"}
-              placeholder="Password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setStatus({ type: "", message: "" });
+              }}
+              onBlur={() => setFieldTouched("password")}
+              placeholder="Enter your password"
+              className={touched.password && errors.password ? "hasError" : ""}
             />
-            <button type="button" className="passwordToggle" onClick={() => setShowPassword((prev) => !prev)}>
+            <button
+              type="button"
+              className="loginPasswordToggle"
+              onClick={() => setShowPassword((prev) => !prev)}
+            >
               {showPassword ? "Hide" : "Show"}
             </button>
           </div>
+          {touched.password && errors.password && <small>{errors.password}</small>}
+        </label>
 
-          <button className="loginButton" disabled={loading}>
-            {loading ? "Logging in..." : "Login"}
-          </button>
-        </form>
+        <div className="loginMeta">
+          <label className="loginRemember">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+            />
+            <span>Remember me</span>
+          </label>
+        </div>
 
-        <p className="authHint">Your session stays active for 7 days after login.</p>
+        <button type="submit" className={`loginButton ${loading ? "isLoading" : ""}`} disabled={loading}>
+          <span>{loading ? "Signing in..." : "Login"}</span>
+        </button>
 
-        <p className="loginSwitch">
-          Don't have an account?
-          <span onClick={() => setAuthMode("signup")}> Sign up</span>
-        </p>
-      </div>
+        {status.message && <div className={`loginMessage ${status.type}`}>{status.message}</div>}
+      </form>
+
+      <p className="loginSwitch">
+        Don&apos;t have an account?
+        <button type="button" className="loginSwitchButton" onClick={onSwitchMode}>
+          Sign up
+        </button>
+      </p>
     </div>
   );
 }
