@@ -3,11 +3,13 @@
     height: 100vh;
     position: sticky;
     top: 0;
-    background-color: #171717;
+    background:
+        linear-gradient(180deg, rgba(18, 20, 26, 0.98), rgba(15, 17, 22, 0.98)),
+        var(--bg-base);
     display: flex;
     flex-direction: column;
-    padding: 12px;
-    border-right: 1px solid #2f2f2f;
+    padding: 14px;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
     flex-shrink: 0;
     transition: transform 0.28s ease;
     z-index: 30;
@@ -53,13 +55,16 @@
     justify-content: center;
     width: 40px;
     height: 40px;
-    border-radius: 12px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    color: #b4b4b4;
+    color: var(--text-secondary);
+    transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
 .icon-button:hover {
-    background: #242424;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+    transform: translateY(-1px);
 }
 
 .sidebar-close {
@@ -76,24 +81,27 @@
     align-items: center;
     gap: 12px;
     padding: 12px 14px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     font-size: 0.93rem;
     font-weight: 600;
     letter-spacing: -0.01em;
     width: 100%;
-    border: 1px solid #2f2f2f;
-    background: #1e1e1e;
+    border: 1px solid var(--surface-border);
+    background: rgba(255, 255, 255, 0.04);
+    transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
 
 .menu-item-new:hover {
-    background-color: #2a2a2a;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-color: var(--surface-border-strong);
+    transform: translateY(-1px);
 }
 
 .plus-icon-circle {
     width: 22px;
     height: 22px;
-    border: 1px solid #424242;
+    border: 1px solid rgba(255, 255, 255, 0.16);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -103,7 +111,7 @@
 
 .section-label {
     font-size: 0.74rem;
-    color: #b4b4b4;
+    color: var(--text-muted);
     padding: 20px 12px 8px;
     font-weight: 700;
     text-transform: uppercase;
@@ -121,9 +129,9 @@
     gap: 10px;
     padding: 18px 12px;
     margin-top: 4px;
-    border-radius: 14px;
-    background: #1c1c1c;
-    border: 1px solid #2a2a2a;
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     text-align: left;
 }
 
@@ -134,13 +142,13 @@
 }
 
 .historyState p {
-    color: #e6ebf5;
+    color: var(--text-primary);
     font-size: 0.94rem;
     font-weight: 600;
 }
 
 .historyState span {
-    color: #8f9bb0;
+    color: var(--text-muted);
     font-size: 0.84rem;
 }
 
@@ -175,7 +183,7 @@
     width: fit-content;
     min-height: 38px;
     padding: 0 14px;
-    border-radius: 12px;
+    border-radius: var(--radius-sm);
     background: rgba(255, 255, 255, 0.08);
     color: #eef3fb;
     cursor: pointer;
@@ -187,7 +195,7 @@
 
 .history-list li {
     padding: 12px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     margin: 4px 0;
     cursor: pointer;
     font-size: 0.94rem;
@@ -197,12 +205,13 @@
     justify-content: space-between;
     align-items: center;
     gap: 10px;
-    transition: background-color 0.18s ease;
+    transition: background-color 0.18s ease, transform 0.18s ease;
 }
 
 .history-list li:hover,
 .history-list li.active {
-    background-color: #212121;
+    background-color: rgba(255, 255, 255, 0.06);
+    transform: translateX(2px);
 }
 
 .title-text {
@@ -220,7 +229,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #9b9b9b;
+    color: var(--text-muted);
     transition: opacity 0.2s, background-color 0.2s, color 0.2s;
     flex-shrink: 0;
 }
@@ -231,12 +240,12 @@
 }
 
 .thread-action-button:hover {
-    background: #2e2e2e;
+    background: rgba(255, 255, 255, 0.08);
     color: #ff4d4d;
 }
 
 .sidebar-footer {
-    border-top: 1px solid #2f2f2f;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
     padding: 15px 4px;
     display: flex;
     justify-content: center;
@@ -246,7 +255,7 @@
 .made-by-signature {
     text-align: center;
     font-size: 0.81rem;
-    color: #8e8e8e;
+    color: var(--text-muted);
     letter-spacing: 0.02em;
 }
 

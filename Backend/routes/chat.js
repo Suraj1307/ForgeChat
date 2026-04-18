@@ -1,6 +1,6 @@
 import express from "express";
 import Thread from "../models/Thread.js";
-import { createOpenAIResponse, streamOpenAIResponse } from "../utils/openai.js";
+import { createGeminiResponse, streamGeminiResponse } from "../utils/gemini.js";
 import auth from "../utils/auth.js";
 import { normalizeIncomingAttachment } from "../utils/attachments.js";
 
@@ -133,7 +133,7 @@ router.post("/chat", auth, async (req, res) => {
       normalizedAttachment?.storedAttachment || null
     );
 
-    const assistantReply = await createOpenAIResponse(buildMessagesForModel(thread, normalizedAttachment));
+    const assistantReply = await createGeminiResponse(buildMessagesForModel(thread, normalizedAttachment));
     thread.messages.push({ role: "assistant", content: assistantReply });
     thread.updatedAt = new Date();
     await thread.save();
@@ -155,16 +155,22 @@ router.post("/chat/stream", auth, async (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
   res.flushHeaders?.();
+  sendSse(res, { type: "status", status: "Connected. Preparing your request..." });
 
   const streamController = new AbortController();
   let clientDisconnected = false;
   const handleClientDisconnect = () => {
+    if (res.writableEnded || res.destroyed) {
+      return;
+    }
     clientDisconnected = true;
     streamController.abort(new Error("Client disconnected."));
   };
 
-  req.on("close", handleClientDisconnect);
+  req.on("aborted", handleClientDisconnect);
+  res.on("close", handleClientDisconnect);
 
   try {
     const normalizedAttachment = await normalizeIncomingAttachment(attachment);
@@ -189,7 +195,9 @@ router.post("/chat/stream", auth, async (req, res) => {
       normalizedAttachment?.storedAttachment || null
     );
 
-    const assistantReply = await streamOpenAIResponse(
+    sendSse(res, { type: "status", status: "Thinking..." });
+
+    const assistantReply = await streamGeminiResponse(
       buildMessagesForModel(thread, normalizedAttachment),
       {
         onDelta: (delta) => sendSse(res, { type: "delta", delta }),
@@ -219,7 +227,8 @@ router.post("/chat/stream", auth, async (req, res) => {
       });
     }
   } finally {
-    req.off("close", handleClientDisconnect);
+    req.off("aborted", handleClientDisconnect);
+    res.off("close", handleClientDisconnect);
     if (!res.writableEnded) {
       res.end();
     }

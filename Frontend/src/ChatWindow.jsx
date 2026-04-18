@@ -142,27 +142,46 @@ const readSseStream = async (stream, onEvent) => {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let eventDataLines = [];
+
+  const flushEvent = () => {
+    if (!eventDataLines.length) return;
+
+    const payload = eventDataLines.join("\n").trim();
+    eventDataLines = [];
+
+    if (!payload || payload === "[DONE]") return;
+
+    onEvent(JSON.parse(payload));
+  };
 
   while (true) {
     const { value, done } = await reader.read();
-    if (done) break;
 
     buffer += decoder.decode(value, { stream: true });
-    const events = buffer.split("\n\n");
-    buffer = events.pop() || "";
+    const lines = buffer.split(/\r?\n/);
+    buffer = lines.pop() || "";
 
-    for (const eventChunk of events) {
-      const lines = eventChunk
-        .split("\n")
-        .filter((line) => line.startsWith("data:"))
-        .map((line) => line.replace(/^data:\s?/, ""));
+    for (const line of lines) {
+      if (!line) {
+        flushEvent();
+        continue;
+      }
 
-      if (!lines.length) continue;
+      if (line.startsWith("data:")) {
+        eventDataLines.push(line.replace(/^data:\s?/, ""));
+      }
+    }
 
-      const payload = JSON.parse(lines.join("\n"));
-      onEvent(payload);
+    if (done) {
+      break;
     }
   }
+
+  if (buffer.startsWith("data:")) {
+    eventDataLines.push(buffer.replace(/^data:\s?/, ""));
+  }
+  flushEvent();
 };
 
 const getUserInitials = (name = "", email = "") => {
@@ -394,9 +413,12 @@ function ChatWindow() {
       },
     ]);
 
+    let firstEventTimeout = null;
+
     try {
       const controller = new AbortController();
       streamControllerRef.current = controller;
+      let hasReceivedStreamEvent = false;
 
       const response = await fetch("/api/chat/stream", {
         method: "POST",
@@ -422,10 +444,21 @@ function ChatWindow() {
         throw new Error(errorData?.error || "Failed to start streaming response.");
       }
 
+      firstEventTimeout = window.setTimeout(() => {
+        if (!hasReceivedStreamEvent && !controller.signal.aborted) {
+          controller.abort();
+        }
+      }, 20000);
+
       let finalReply = "";
 
       await readSseStream(response.body, (event) => {
         if (activeRequestIdRef.current !== requestId) return;
+        hasReceivedStreamEvent = true;
+        if (firstEventTimeout) {
+          window.clearTimeout(firstEventTimeout);
+          firstEventTimeout = null;
+        }
 
         if (event.type === "status") {
           setStatusMessage(event.status);
@@ -462,10 +495,27 @@ function ChatWindow() {
       streamControllerRef.current = null;
       const isAbort = err.name === "AbortError";
       if (isAbort || activeRequestIdRef.current !== requestId) {
+        if (activeRequestIdRef.current === requestId) {
+          const message =
+            "The server connected but did not start streaming. Check whether the backend and OpenAI request are working.";
+          setComposerError(message);
+          setStatusMessage("");
+          setUploadState(nextAttachment ? "ready" : "idle");
+          setStreamReply("");
+          setPrevChats((prev) =>
+            prev.map((chat) =>
+              chat.id === pendingMessageId ? { ...chat, status: "failed", error: message } : chat
+            )
+          );
+          toast.error(message);
+        }
         return;
       }
 
-      const message = err.message || "Something went wrong";
+      const message =
+        err instanceof TypeError && /fetch/i.test(err.message || "")
+          ? "Cannot reach the backend server. Make sure the API is running on port 5000."
+          : err.message || "Something went wrong";
       setComposerError(message);
       setStatusMessage("");
       setUploadState(nextAttachment ? "ready" : "idle");
@@ -479,6 +529,9 @@ function ChatWindow() {
 
       toast.error(message);
     } finally {
+      if (typeof firstEventTimeout === "number") {
+        window.clearTimeout(firstEventTimeout);
+      }
       if (activeRequestIdRef.current === requestId) {
         setLoading(false);
       }
@@ -537,19 +590,14 @@ function ChatWindow() {
           <span>ForgeChat</span>
         </div>
 
-        <div
-          className="userIconDiv"
-          ref={profileRef}
-          onClick={handleProfileClick}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              handleProfileClick();
-            }
-          }}
-        >
+        <div className="userIconDiv" ref={profileRef}>
+          <button
+            type="button"
+            className="userIconButton"
+            onClick={handleProfileClick}
+            aria-label="Open profile"
+            aria-expanded={isOpen}
+          >
           <span className="userIcon">
             {authUser?.avatarUrl ? (
               <img src={authUser.avatarUrl} alt={`${authUser.name || "User"} avatar`} className="userAvatarImage" />
@@ -557,73 +605,67 @@ function ChatWindow() {
               <span className="userInitials">{userInitials}</span>
             )}
           </span>
-
-          {isOpen && (
-            <>
-              <button
-                type="button"
-                className="profileModalBackdrop"
-                aria-label="Close profile"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsOpen(false);
-                }}
-              />
-              <div
-                className="profileModal"
-                role="dialog"
-                aria-modal="true"
-                aria-label="Profile details"
-                ref={profileModalRef}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  type="button"
-                  className="profileModalClose"
-                  ref={profileCloseButtonRef}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsOpen(false);
-                  }}
-                  aria-label="Close profile"
-                >
-                  <i className="fa-solid fa-xmark"></i>
-                </button>
-
-                <div className="profileModalAvatar">
-                  {authUser?.avatarUrl ? (
-                    <img
-                      src={authUser.avatarUrl}
-                      alt={`${authUser.name || "User"} avatar`}
-                      className="dropDownAvatarImage"
-                    />
-                  ) : (
-                    <span className="dropDownAvatarInitials">{userInitials}</span>
-                  )}
-                </div>
-
-                <div className="profileModalBody">
-                  <p className="profileModalEyebrow">ForgeChat Profile</p>
-                  <h2 className="profileModalName">{authUser?.name || "User"}</h2>
-                  <p className="profileModalEmail">{authUser?.email || "No email"}</p>
-                  <p className="profileModalMeta">Joined {joinedLabel}</p>
-                </div>
-
-                <div className="profileModalActions">
-                  <button type="button" className="profileSecondaryButton" onClick={handleCopyEmail}>
-                    <i className="fa-regular fa-copy"></i>
-                    Copy email
-                  </button>
-                  <button type="button" className="dropDownItem logout profileLogoutButton" onClick={handleLogout}>
-                    <i className="fa-solid fa-arrow-right-from-bracket"></i>
-                    Log out
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
+          </button>
         </div>
       </div>
+
+      {isOpen && (
+        <>
+          <button
+            type="button"
+            className="profileModalBackdrop"
+            aria-label="Close profile"
+            onClick={() => setIsOpen(false)}
+          />
+          <div
+            className="profileModal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Profile details"
+            ref={profileModalRef}
+          >
+            <button
+              type="button"
+              className="profileModalClose"
+              ref={profileCloseButtonRef}
+              onClick={() => setIsOpen(false)}
+              aria-label="Close profile"
+            >
+              <i className="fa-solid fa-xmark"></i>
+            </button>
+
+            <div className="profileModalAvatar">
+              {authUser?.avatarUrl ? (
+                <img
+                  src={authUser.avatarUrl}
+                  alt={`${authUser.name || "User"} avatar`}
+                  className="dropDownAvatarImage"
+                />
+              ) : (
+                <span className="dropDownAvatarInitials">{userInitials}</span>
+              )}
+            </div>
+
+            <div className="profileModalBody">
+              <p className="profileModalEyebrow">ForgeChat Profile</p>
+              <h2 className="profileModalName">{authUser?.name || "User"}</h2>
+              <p className="profileModalEmail">{authUser?.email || "No email"}</p>
+              <p className="profileModalMeta">Joined {joinedLabel}</p>
+            </div>
+
+            <div className="profileModalActions">
+              <button type="button" className="profileSecondaryButton" onClick={handleCopyEmail}>
+                <i className="fa-regular fa-copy"></i>
+                Copy email
+              </button>
+              <button type="button" className="dropDownItem logout profileLogoutButton" onClick={handleLogout}>
+                <i className="fa-solid fa-arrow-right-from-bracket"></i>
+                Log out
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       <Suspense fallback={<div className="chatLoaderState">Loading chat...</div>}>
         <Chat suggestedPrompts={SUGGESTED_PROMPTS} />
@@ -691,10 +733,7 @@ function ChatWindow() {
           </div>
         </div>
 
-        <p className="info">
-          Press Enter to send, Shift + Enter for a new line. Supports text/code files, PDF, DOCX, and common images.
-        </p>
-        {statusMessage && <p className="info">{statusMessage}</p>}
+        {statusMessage && statusMessage !== "Thinking..." && <p className="info">{statusMessage}</p>}
       </div>
     </div>
   );

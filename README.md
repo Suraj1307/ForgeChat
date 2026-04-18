@@ -54,10 +54,10 @@ Backend expects:
 ```bash
 MONGODB_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret
-OPENAI_API_KEY=your_openai_api_key
-OPENAI_MODEL=gpt-4o-mini
-OPENAI_TIMEOUT_MS=45000
-OPENAI_MAX_RETRIES=1
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_TIMEOUT_MS=45000
+GEMINI_MAX_RETRIES=1
 CORS_ORIGIN=http://localhost:5173
 ```
 

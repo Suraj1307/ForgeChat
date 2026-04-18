@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 
 import { normalizeIncomingAttachment } from "../utils/attachments.js";
-import { normalizeRole, sanitizeMessagesForModel } from "../utils/openai.js";
+import { normalizeRole, sanitizeMessagesForModel } from "../utils/gemini.js";
 import createRateLimit from "../utils/rateLimit.js";
 
 const tests = [];
@@ -124,7 +124,7 @@ test("rate limiter blocks requests over the limit", () => {
   assert.ok(Number(res.headers["Retry-After"]) >= 1);
 });
 
-test("legacy and empty roles are normalized before sending to OpenAI", () => {
+test("legacy and empty roles are normalized before sending to Gemini", () => {
   assert.equal(normalizeRole("gpt"), "assistant");
   assert.equal(normalizeRole("system"), "developer");
   assert.equal(normalizeRole(""), "user");
@@ -137,12 +137,12 @@ test("legacy and empty roles are normalized before sending to OpenAI", () => {
 
   assert.deepEqual(messages, [
     {
-      role: "assistant",
-      content: [{ type: "output_text", text: "Old assistant reply" }],
+      role: "model",
+      parts: [{ text: "Old assistant reply" }],
     },
     {
       role: "user",
-      content: [{ type: "input_text", text: "User question from old thread" }],
+      parts: [{ text: "User question from old thread" }],
     },
   ]);
 });
