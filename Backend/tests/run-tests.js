@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 
 import { normalizeIncomingAttachment } from "../utils/attachments.js";
-import { normalizeRole, sanitizeMessagesForModel } from "../utils/gemini.js";
+import {
+  normalizeOpenAIErrorMessage,
+  normalizeRole,
+  sanitizeMessagesForModel,
+} from "../utils/openai.js";
 import createRateLimit from "../utils/rateLimit.js";
 
 const tests = [];
@@ -124,7 +128,7 @@ test("rate limiter blocks requests over the limit", () => {
   assert.ok(Number(res.headers["Retry-After"]) >= 1);
 });
 
-test("legacy and empty roles are normalized before sending to Gemini", () => {
+test("legacy and empty roles are normalized before sending to OpenAI", () => {
   assert.equal(normalizeRole("gpt"), "assistant");
   assert.equal(normalizeRole("system"), "developer");
   assert.equal(normalizeRole(""), "user");
@@ -137,14 +141,21 @@ test("legacy and empty roles are normalized before sending to Gemini", () => {
 
   assert.deepEqual(messages, [
     {
-      role: "model",
-      parts: [{ text: "Old assistant reply" }],
+      role: "assistant",
+      content: [{ type: "input_text", text: "Old assistant reply" }],
     },
     {
       role: "user",
-      parts: [{ text: "User question from old thread" }],
+      content: [{ type: "input_text", text: "User question from old thread" }],
     },
   ]);
+});
+
+test("OpenAI rate limit errors are converted into a user-friendly message", () => {
+  assert.equal(
+    normalizeOpenAIErrorMessage("Rate limit reached for requests per min. Please try again later."),
+    "ForgeChat is busy right now. Please try again in a moment."
+  );
 });
 
 let failures = 0;

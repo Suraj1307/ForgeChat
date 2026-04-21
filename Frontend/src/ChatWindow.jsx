@@ -218,6 +218,7 @@ function ChatWindow() {
     setReply,
     setStreamReply,
     currThreadId,
+    newChat,
     setPrevChats,
     setNewChat,
     isSidebarOpen,
@@ -498,7 +499,7 @@ function ChatWindow() {
         if (activeRequestIdRef.current === requestId) {
           const message =
             "The server connected but did not start streaming. Check whether the backend and OpenAI request are working.";
-          setComposerError(message);
+          setComposerError("");
           setStatusMessage("");
           setUploadState(nextAttachment ? "ready" : "idle");
           setStreamReply("");
@@ -516,7 +517,7 @@ function ChatWindow() {
         err instanceof TypeError && /fetch/i.test(err.message || "")
           ? "Cannot reach the backend server. Make sure the API is running on port 5000."
           : err.message || "Something went wrong";
-      setComposerError(message);
+      setComposerError("");
       setStatusMessage("");
       setUploadState(nextAttachment ? "ready" : "idle");
       setStreamReply("");
@@ -540,11 +541,6 @@ function ChatWindow() {
 
   const handleProfileClick = () => {
     setIsOpen((prev) => !prev);
-  };
-
-  const handleLogout = () => {
-    logout();
-    toast.success("Logged out");
   };
 
   const handleCopyEmail = async () => {
@@ -573,6 +569,7 @@ function ChatWindow() {
           : "fa-file-lines";
   const userInitials = getUserInitials(authUser?.name, authUser?.email);
   const joinedLabel = formatJoinedDate(authUser?.createdAt);
+  const firstName = authUser?.name?.trim()?.split(/\s+/)?.[0] || "there";
 
   return (
     <div className="chatWindow" data-theme="dark">
@@ -587,7 +584,9 @@ function ChatWindow() {
           >
             <i className={`fa-solid ${isSidebarOpen ? "fa-xmark" : "fa-bars"}`}></i>
           </button>
-          <span>ForgeChat</span>
+          <div className="navbarBrand">
+            <span>ForgeChat</span>
+          </div>
         </div>
 
         <div className="userIconDiv" ref={profileRef}>
@@ -658,18 +657,16 @@ function ChatWindow() {
                 <i className="fa-regular fa-copy"></i>
                 Copy email
               </button>
-              <button type="button" className="dropDownItem logout profileLogoutButton" onClick={handleLogout}>
-                <i className="fa-solid fa-arrow-right-from-bracket"></i>
-                Log out
-              </button>
             </div>
           </div>
         </>
       )}
 
-      <Suspense fallback={<div className="chatLoaderState">Loading chat...</div>}>
-        <Chat suggestedPrompts={SUGGESTED_PROMPTS} />
-      </Suspense>
+      <div className="chatStage">
+        <Suspense fallback={<div className="chatLoaderState">Loading chat...</div>}>
+          <Chat suggestedPrompts={SUGGESTED_PROMPTS} />
+        </Suspense>
+      </div>
 
       <div className="loaderDiv">
         <ScaleLoader color="#fff" loading={loading} height={20} />
@@ -697,7 +694,7 @@ function ChatWindow() {
         <div className="inputBox">
           <textarea
             ref={textareaRef}
-            placeholder="Ask anything..."
+            placeholder="Ask anything, or drop in code, docs, and screenshots..."
             value={prompt}
             rows={1}
             onChange={(e) => setPrompt(e.target.value)}

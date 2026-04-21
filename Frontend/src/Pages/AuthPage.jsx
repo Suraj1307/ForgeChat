@@ -11,27 +11,33 @@ function AuthPage() {
   return (
     <div className="authShell">
       <div className="authLayout">
-        <section className="authCard authCardSingle">
+        <section className="authCard">
           <div className="authCardTop">
-            <div className="authTabs" role="tablist" aria-label="Authentication mode">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={!isSignup}
-                className={!isSignup ? "active" : ""}
-                onClick={() => setAuthMode("login")}
-              >
-                Login
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={isSignup}
-                className={isSignup ? "active" : ""}
-                onClick={() => setAuthMode("signup")}
-              >
-                Sign up
-              </button>
+            <div className="authBrandRow">
+              <div>
+                <p className="authEyebrow">ForgeChat</p>
+                <h2>Welcome to your workspace</h2>
+              </div>
+              <div className="authTabs" role="tablist" aria-label="Authentication mode">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={!isSignup}
+                  className={!isSignup ? "active" : ""}
+                  onClick={() => setAuthMode("login")}
+                >
+                  Login
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={isSignup}
+                  className={isSignup ? "active" : ""}
+                  onClick={() => setAuthMode("signup")}
+                >
+                  Sign up
+                </button>
+              </div>
             </div>
           </div>
 

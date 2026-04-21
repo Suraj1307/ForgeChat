@@ -118,6 +118,9 @@ function Chat({ suggestedPrompts = [] }) {
       {newChat && (
         <div className="welcome-screen">
           <h1>What can I help with?</h1>
+          <p className="welcome-copy">
+            Start with a question, paste some code, or use one of these prompts to get moving faster.
+          </p>
           <div className="suggested-prompts">
             {suggestedPrompts.map((item) => (
               <button key={item} type="button" className="prompt-chip" onClick={() => setPrompt(item)}>

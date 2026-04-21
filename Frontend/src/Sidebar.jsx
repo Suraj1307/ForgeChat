@@ -142,6 +142,12 @@ function Sidebar() {
     }
   };
 
+  const handleLogout = () => {
+    cancelActiveStream();
+    logout();
+    toast.success("Logged out");
+  };
+
   return (
     <>
       <button
@@ -154,7 +160,13 @@ function Sidebar() {
       <section className={`sidebar ${isSidebarOpen ? "open" : ""}`}>
         <div className="sidebar-header">
           <div className="nav-top">
-            <img src={logoImg} alt="ForgeChat Logo" className="nav-logo-large" />
+            <div className="sidebar-brand">
+              <img src={logoImg} alt="ForgeChat Logo" className="nav-logo-large" />
+              <div className="sidebar-brand-copy">
+                <strong>ForgeChat</strong>
+                <span>Your workspace</span>
+              </div>
+            </div>
             <div className="sidebar-top-actions">
               <button
                 type="button"
@@ -234,8 +246,14 @@ function Sidebar() {
         </div>
 
         <div className="sidebar-footer">
-          <div className="made-by-signature">
-            Made with <span className="heart-red">&#10084;&#65039;</span> by Suraj
+          <div className="sidebar-footer-card">
+            <button type="button" className="sidebarLogoutButton" onClick={handleLogout}>
+              <i className="fa-solid fa-arrow-right-from-bracket"></i>
+              <span>Log out</span>
+            </button>
+            <div className="made-by-signature">
+              Made with <span className="heart-red">&#10084;&#65039;</span> by Suraj
+            </div>
           </div>
         </div>
       </section>

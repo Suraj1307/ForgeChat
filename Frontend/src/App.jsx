@@ -44,10 +44,26 @@ function App() {
 
   const logout = useCallback(() => {
     cancelActiveStream();
+    const activeToken = localStorage.getItem("token");
+    if (activeToken) {
+      void fetch("/api/logout", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${activeToken}`,
+        },
+      }).catch(() => {});
+    }
     localStorage.removeItem("token");
+    sessionStorage.removeItem("token");
     setAuthToken("");
     setAuthUser(null);
+    setAuthMode("login");
     resetChatState();
+
+    // Force the app back to a clean signed-out screen even if stale UI state lingers.
+    window.setTimeout(() => {
+      window.location.replace("/");
+    }, 0);
   }, [cancelActiveStream]);
 
   const bumpThreadsRevision = () => {

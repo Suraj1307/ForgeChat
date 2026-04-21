@@ -8,11 +8,18 @@ const router = express.Router();
 const AVATAR_DATA_URL_PATTERN = /^data:image\/(?:png|jpeg|jpg|webp);base64,[a-z0-9+/=]+$/i;
 const MAX_AVATAR_LENGTH = 2_100_000;
 
-const createToken = (userId) =>
-  jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
+const createToken = (user) =>
+  jwt.sign(
+    {
+      userId: user._id,
+      tokenVersion: Number(user.tokenVersion ?? 0),
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: "7d" }
+  );
 
 const createAuthPayload = (user) => ({
-  token: createToken(user._id),
+  token: createToken(user),
   userId: user._id,
   user: {
     name: user.name,
@@ -100,6 +107,15 @@ router.get("/me", authMiddleware, async (req, res) => {
     res.json(user);
   } catch {
     res.status(500).json({ error: "Failed to fetch user" });
+  }
+});
+
+router.post("/logout", authMiddleware, async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(req.userId, { $inc: { tokenVersion: 1 } });
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: "Failed to log out" });
   }
 });
 

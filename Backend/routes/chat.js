@@ -1,6 +1,10 @@
 import express from "express";
 import Thread from "../models/Thread.js";
-import { createGeminiResponse, streamGeminiResponse } from "../utils/gemini.js";
+import {
+  createOpenAIResponse,
+  normalizeOpenAIErrorMessage,
+  streamOpenAIResponse,
+} from "../utils/openai.js";
 import auth from "../utils/auth.js";
 import { normalizeIncomingAttachment } from "../utils/attachments.js";
 
@@ -133,7 +137,7 @@ router.post("/chat", auth, async (req, res) => {
       normalizedAttachment?.storedAttachment || null
     );
 
-    const assistantReply = await createGeminiResponse(buildMessagesForModel(thread, normalizedAttachment));
+    const assistantReply = await createOpenAIResponse(buildMessagesForModel(thread, normalizedAttachment));
     thread.messages.push({ role: "assistant", content: assistantReply });
     thread.updatedAt = new Date();
     await thread.save();
@@ -141,7 +145,9 @@ router.post("/chat", auth, async (req, res) => {
     res.json({ reply: assistantReply });
   } catch (err) {
     console.error("Chat Logic Error:", err);
-    res.status(500).json({ error: err.message || "AI Processing Failed" });
+    res.status(500).json({
+      error: normalizeOpenAIErrorMessage(err.message || "AI Processing Failed"),
+    });
   }
 });
 
@@ -197,7 +203,7 @@ router.post("/chat/stream", auth, async (req, res) => {
 
     sendSse(res, { type: "status", status: "Thinking..." });
 
-    const assistantReply = await streamGeminiResponse(
+    const assistantReply = await streamOpenAIResponse(
       buildMessagesForModel(thread, normalizedAttachment),
       {
         onDelta: (delta) => sendSse(res, { type: "delta", delta }),
@@ -223,7 +229,7 @@ router.post("/chat/stream", auth, async (req, res) => {
     if (!clientDisconnected) {
       sendSse(res, {
         type: "error",
-        message: err.message || "AI Processing Failed",
+        message: normalizeOpenAIErrorMessage(err.message || "AI Processing Failed"),
       });
     }
   } finally {

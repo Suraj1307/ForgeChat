@@ -1,50 +1,50 @@
 .loginPanel {
   display: grid;
-  gap: 22px;
+  gap: 24px;
 }
 
 .loginHeader h2 {
   margin: 0 0 10px;
-  color: #f6f8ff;
+  color: #f6fbff;
   font-family: "Space Grotesk", sans-serif;
-  font-size: clamp(1.85rem, 2.8vw, 2.55rem);
-  line-height: 1.08;
+  font-size: clamp(1.9rem, 2.6vw, 2.45rem);
+  line-height: 1.04;
   letter-spacing: -0.04em;
 }
 
 .loginHeader p {
   margin: 0;
-  color: #99a7c0;
+  color: #9fb3cf;
   font-size: 0.98rem;
-  line-height: 1.55;
+  line-height: 1.65;
 }
 
 .loginForm {
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 
 .loginField {
   display: grid;
-  gap: 8px;
+  gap: 9px;
 }
 
 .loginField span {
-  color: #a5b2cb;
-  font-size: 0.82rem;
+  color: #9ec7d3;
+  font-size: 0.78rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .loginField input {
   width: 100%;
-  height: 52px;
+  height: 54px;
   padding: 0 18px;
   border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.045);
-  color: #f7f9ff;
+  border: 1px solid rgba(202, 220, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #f7fbff;
   transition:
     transform 0.18s ease,
     border-color 0.22s ease,
@@ -53,26 +53,26 @@
 }
 
 .loginField input::placeholder {
-  color: #7f8ca4;
+  color: #6f86a7;
 }
 
 .loginField input:hover {
-  border-color: rgba(123, 147, 255, 0.26);
+  border-color: rgba(93, 180, 255, 0.24);
 }
 
 .loginField input:focus {
   outline: none;
-  transform: scale(1.01);
-  border-color: rgba(112, 171, 255, 0.52);
+  transform: translateY(-1px);
+  border-color: rgba(89, 208, 255, 0.5);
   box-shadow:
-    0 0 0 4px rgba(90, 149, 255, 0.12),
-    0 0 24px rgba(98, 134, 255, 0.12);
+    0 0 0 4px rgba(27, 167, 255, 0.1),
+    0 0 30px rgba(27, 167, 255, 0.12);
   background: rgba(255, 255, 255, 0.06);
 }
 
 .loginField input.hasError {
   border-color: rgba(255, 109, 109, 0.65);
-  box-shadow: 0 0 0 4px rgba(255, 109, 109, 0.1);
+  box-shadow: 0 0 0 4px rgba(255, 109, 109, 0.08);
 }
 
 .loginField small {
@@ -94,19 +94,20 @@
   top: 50%;
   right: 10px;
   transform: translateY(-50%);
-  height: 40px;
-  padding: 0 16px;
+  height: 38px;
+  padding: 0 14px;
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
-  color: #d4def2;
+  background: rgba(255, 255, 255, 0.05);
+  color: #d8e8f3;
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
 .loginPasswordToggle:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.14);
+  transform: translateY(-50%) translateY(-1px);
 }
 
 .loginMeta {
@@ -114,21 +115,20 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-top: 0;
 }
 
 .loginRemember {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  color: #9cabc3;
-  font-size: 0.92rem;
+  color: #a5b7d2;
+  font-size: 0.93rem;
 }
 
 .loginRemember input {
   width: 16px;
   height: 16px;
-  accent-color: #75a6ff;
+  accent-color: #2ec5ff;
 }
 
 .loginSwitchButton,
@@ -138,23 +138,19 @@
   font: inherit;
 }
 
-.loginSwitchButton:hover {
-  color: #c7d8ff;
-}
-
 .loginButton {
   position: relative;
   overflow: hidden;
-  height: 54px;
-  margin-top: 2px;
+  height: 56px;
+  margin-top: 4px;
   border-radius: 18px;
-  background: linear-gradient(135deg, #4f7cff, #7b5bff 58%, #5fbeff);
-  color: #fff;
+  background: linear-gradient(135deg, #16afff, #1ed5ce 60%, #9add71);
+  color: #041119;
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: -0.01em;
   cursor: pointer;
-  box-shadow: 0 20px 40px rgba(76, 114, 255, 0.28);
+  box-shadow: 0 22px 48px rgba(22, 175, 255, 0.24);
   transition: transform 0.18s ease, box-shadow 0.22s ease;
 }
 
@@ -163,7 +159,7 @@
   position: absolute;
   inset: 0;
   transform: translateX(-120%);
-  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.35), transparent 80%);
+  background: linear-gradient(100deg, transparent 18%, rgba(255, 255, 255, 0.45), transparent 82%);
   transition: transform 0.6s ease;
 }
 
@@ -173,7 +169,7 @@
 
 .loginButton:hover {
   transform: translateY(-1px);
-  box-shadow: 0 24px 46px rgba(76, 114, 255, 0.34);
+  box-shadow: 0 26px 54px rgba(22, 175, 255, 0.3);
 }
 
 .loginButton.isLoading,
@@ -186,20 +182,20 @@
   padding: 14px 16px;
   border-radius: 16px;
   font-size: 0.92rem;
-  line-height: 1.5;
+  line-height: 1.55;
   border: 1px solid transparent;
 }
 
 .loginMessage.success {
   background: rgba(55, 203, 131, 0.1);
   border-color: rgba(55, 203, 131, 0.24);
-  color: #a9f0c8;
+  color: #b8f2d0;
 }
 
 .loginMessage.error {
   background: rgba(255, 109, 109, 0.08);
   border-color: rgba(255, 109, 109, 0.2);
-  color: #ffb8bc;
+  color: #ffbcc0;
 }
 
 .loginMessage.info {
@@ -210,7 +206,7 @@
 
 .loginSwitch {
   margin: 0;
-  color: #97a3ba;
+  color: #97a9c3;
   font-size: 0.94rem;
   text-align: center;
 }
@@ -218,9 +214,13 @@
 .loginSwitchButton {
   margin-left: 8px;
   background: transparent;
-  color: #9fc1ff;
+  color: #8de1ff;
   font-weight: 700;
   cursor: pointer;
+}
+
+.loginSwitchButton:hover {
+  color: #d6fbff;
 }
 
 @media (max-width: 640px) {
