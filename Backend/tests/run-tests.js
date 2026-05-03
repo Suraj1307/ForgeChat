@@ -142,7 +142,7 @@ test("legacy and empty roles are normalized before sending to OpenAI", () => {
   assert.deepEqual(messages, [
     {
       role: "assistant",
-      content: [{ type: "input_text", text: "Old assistant reply" }],
+      content: [{ type: "output_text", text: "Old assistant reply" }],
     },
     {
       role: "user",

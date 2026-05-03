@@ -2,7 +2,6 @@ import "./ChatWindow.css";
 import { lazy, Suspense, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { v1 as uuidv1 } from "uuid";
 import { MyContext } from "./MyContext.jsx";
-import { ScaleLoader } from "react-spinners";
 import toast from "react-hot-toast";
 
 const Chat = lazy(() => import("./Chat.jsx"));
@@ -668,8 +667,17 @@ function ChatWindow() {
         </Suspense>
       </div>
 
-      <div className="loaderDiv">
-        <ScaleLoader color="#fff" loading={loading} height={20} />
+      <div className={`loaderDiv ${loading ? "isVisible" : ""}`} aria-hidden={!loading}>
+        {loading && (
+          <div className="responseLoader" role="status" aria-live="polite">
+            <div className="responseLoaderPulse">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <span className="responseLoaderText">ForgeChat is thinking</span>
+          </div>
+        )}
       </div>
 
       <div className="chatInput">

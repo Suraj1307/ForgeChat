@@ -37,6 +37,11 @@ const buildAttachmentTextPart = (attachment) => ({
   text: `Attachment: ${attachment.name}\nType: ${attachment.mimeType}\nContent:\n${attachment.textContent}`,
 });
 
+const buildTextPartForRole = (role, text) => ({
+  type: role === "assistant" ? "output_text" : "input_text",
+  text,
+});
+
 const attachmentToOpenAIParts = (attachment) => {
   if (attachment.kind === "image" && attachment.previewUrl) {
     return [
@@ -69,7 +74,7 @@ const buildOpenAIMessage = (message) => {
   const normalizedRole = normalizeRole(message?.role);
   const text = String(message?.content || "").trim();
   const content = [
-    ...(text ? [{ type: "input_text", text }] : []),
+    ...(text ? [buildTextPartForRole(normalizedRole, text)] : []),
     ...(message.attachments?.flatMap(attachmentToOpenAIParts) || []),
   ];
 
