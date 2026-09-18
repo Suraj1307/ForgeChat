@@ -115,7 +115,24 @@ server.use("/api", chatRoutes);
 server.use("/api", userRoutes);
 
 if (fs.existsSync(frontendDistDir)) {
-  server.use(express.static(frontendDistDir));
+  server.use(
+    express.static(frontendDistDir, {
+      index: false,
+      setHeaders(res, filePath) {
+        if (path.basename(filePath) === "index.html") {
+          res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+          return;
+        }
+
+        if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        }
+      },
+    })
+  );
+  server.get(/^\/assets\/.+/, (_req, res) => {
+    res.status(404).type("text").send("Asset not found.");
+  });
   server.get(/^(?!\/api).*/, (_req, res) => {
     res.sendFile(path.join(frontendDistDir, "index.html"));
   });

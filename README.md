@@ -47,6 +47,11 @@ npm run start
 
 The app runs at `http://localhost:5000`.
 
+For Render, use the repository root as the service root, configure the build command as
+`npm run install:all && npm run build`, and configure the start command as `npm run start`.
+The build must complete before the Node service starts so the generated Vite asset hashes
+match the deployed `index.html`.
+
 ## Environment Variables
 
 Backend expects:
