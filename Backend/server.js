@@ -75,7 +75,22 @@ const apiCors = cors({
   allowedHeaders: ["Content-Type", "Authorization"],
 });
 
-server.use("/api", apiCors);
+const sameOriginApiCors = (req, res, next) => {
+  const requestOrigin = req.get("origin");
+  const forwardedProtocol = req.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const protocol = forwardedProtocol || req.protocol;
+  const requestHost = req.get("host");
+  const sameOrigin = requestOrigin && requestHost && `${protocol}://${requestHost}` === requestOrigin;
+
+  if (!requestOrigin || sameOrigin) {
+    next();
+    return;
+  }
+
+  apiCors(req, res, next);
+};
+
+server.use("/api", sameOriginApiCors);
 server.use(express.json({ limit: "6mb" }));
 server.use(requestLogger);
 
