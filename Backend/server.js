@@ -62,20 +62,20 @@ const shutdown = async (signal) => {
 server.disable("x-powered-by");
 server.set("trust proxy", 1);
 server.use(securityHeaders);
-server.use(
-  cors({
-    origin(origin, callback) {
-      if (isOriginAllowed(origin)) {
-        callback(null, true);
-        return;
-      }
+const apiCors = cors({
+  origin(origin, callback) {
+    if (isOriginAllowed(origin)) {
+      callback(null, true);
+      return;
+    }
 
-      callback(new Error("Blocked by CORS"));
-    },
-    methods: ["GET", "POST", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+    callback(new Error("Blocked by CORS"));
+  },
+  methods: ["GET", "POST", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+});
+
+server.use("/api", apiCors);
 server.use(express.json({ limit: "6mb" }));
 server.use(requestLogger);
 
