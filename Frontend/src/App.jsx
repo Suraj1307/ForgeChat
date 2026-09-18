@@ -4,12 +4,12 @@ import { v1 as uuidv1 } from "uuid";
 import Sidebar from "./Sidebar.jsx";
 import ChatWindow from "./ChatWindow.jsx";
 import { MyContext } from "./MyContext.jsx";
+import { apiFetch, apiRequest, createAuthHeaders, isUnauthorizedResponse } from "./utils/api.js";
 
 const AuthPage = lazy(() => import("./Pages/AuthPage.jsx"));
 
 function App() {
   const [prompt, setPrompt] = useState("");
-  const [reply, setReply] = useState(null);
   const [streamReply, setStreamReply] = useState("");
   const [currThreadId, setCurrThreadId] = useState(uuidv1());
   const [prevChats, setPrevChats] = useState([]);
@@ -25,7 +25,6 @@ function App() {
 
   const resetChatState = () => {
     setPrompt("");
-    setReply(null);
     setStreamReply("");
     setPrevChats([]);
     setAllThreads([]);
@@ -46,21 +45,16 @@ function App() {
     cancelActiveStream();
     const activeToken = localStorage.getItem("token");
     if (activeToken) {
-      void fetch("/api/logout", {
+      void apiFetch("/api/logout", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${activeToken}`,
-        },
+        headers: createAuthHeaders(activeToken),
       }).catch(() => {});
     }
     localStorage.removeItem("token");
-    sessionStorage.removeItem("token");
     setAuthToken("");
     setAuthUser(null);
     setAuthMode("login");
     resetChatState();
-
-    // Force the app back to a clean signed-out screen even if stale UI state lingers.
     window.setTimeout(() => {
       window.location.replace("/");
     }, 0);
@@ -75,27 +69,35 @@ function App() {
 
     let isActive = true;
 
-    fetch("/api/me", {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-      },
-    })
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("Session expired");
+    const syncSession = async () => {
+      try {
+        const { response, payload } = await apiRequest("/api/me", {
+          headers: createAuthHeaders(authToken),
+        });
+
+        if (!isActive) {
+          return;
         }
-        return res.json();
-      })
-      .then((data) => {
-        if (isActive) {
-          setAuthUser(data);
+
+        if (response.ok) {
+          setAuthUser(payload);
+          return;
         }
-      })
-      .catch(() => {
-        if (isActive) {
+
+        if (isUnauthorizedResponse(response)) {
           logout();
+          return;
         }
-      });
+
+        setAuthUser((currentUser) => currentUser ?? null);
+      } catch {
+        if (isActive) {
+          setAuthUser((currentUser) => currentUser ?? null);
+        }
+      }
+    };
+
+    void syncSession();
 
     return () => {
       isActive = false;
@@ -105,8 +107,6 @@ function App() {
   const providerValues = {
     prompt,
     setPrompt,
-    reply,
-    setReply,
     streamReply,
     setStreamReply,
     currThreadId,

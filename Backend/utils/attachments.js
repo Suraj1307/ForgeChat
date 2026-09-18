@@ -1,6 +1,9 @@
 import mammoth from "mammoth";
+import { createAppError } from "./appError.js";
 
 const ALLOWED_KINDS = new Set(["text", "image", "pdf", "docx"]);
+const DATA_URL_IMAGE_PATTERN = /^data:image\/(?:png|jpeg|jpg|webp);base64,[a-z0-9+/=]+$/i;
+const BASE64_PATTERN = /^[a-z0-9+/=]+$/i;
 
 const TEXT_LIMIT = 120000;
 const PDF_LIMIT = 1500000;
@@ -24,8 +27,18 @@ const sanitizeSize = (value) => {
 
 const enforceLimit = (size, maxSize, message) => {
   if (size > maxSize) {
-    throw new Error(message);
+    throw createAppError(400, message, "ATTACHMENT_TOO_LARGE");
   }
+};
+
+const ensureBase64 = (value, fieldName) => {
+  const normalized = String(value || "").trim();
+
+  if (normalized && !BASE64_PATTERN.test(normalized)) {
+    throw createAppError(400, `Invalid ${fieldName}.`, "INVALID_ATTACHMENT");
+  }
+
+  return normalized;
 };
 
 const buildStoredAttachment = (attachment) => ({
@@ -63,7 +76,7 @@ const normalizePdfAttachment = (attachment) => {
       name: sanitizeFileName(attachment.name),
       mimeType: sanitizeMimeType(attachment.mimeType, "application/pdf"),
       textContent: attachment.textContent || `PDF attachment uploaded: ${sanitizeFileName(attachment.name)}`,
-      fileData: String(attachment.fileData || ""),
+      fileData: ensureBase64(attachment.fileData, "PDF data"),
       previewUrl: "",
       size,
     },
@@ -75,7 +88,7 @@ const normalizeDocxAttachment = async (attachment) => {
   enforceLimit(size, DOCX_LIMIT, "Keep DOCX files under 1 MB.");
 
   let textContent = "";
-  const fileData = String(attachment.fileData || "");
+  const fileData = ensureBase64(attachment.fileData, "DOCX data");
 
   if (fileData) {
     const buffer = Buffer.from(fileData, "base64");
@@ -102,6 +115,11 @@ const normalizeDocxAttachment = async (attachment) => {
 const normalizeImageAttachment = (attachment) => {
   const size = sanitizeSize(attachment.size);
   enforceLimit(size, IMAGE_LIMIT, "Keep image files under 1.5 MB.");
+  const previewUrl = String(attachment.previewUrl || "").trim();
+
+  if (!previewUrl || !DATA_URL_IMAGE_PATTERN.test(previewUrl)) {
+    throw createAppError(400, "Upload a PNG, JPG, JPEG, or WEBP image under 1.5 MB.", "INVALID_ATTACHMENT");
+  }
 
   return {
     processingAttachment: {
@@ -110,34 +128,33 @@ const normalizeImageAttachment = (attachment) => {
       mimeType: sanitizeMimeType(attachment.mimeType, "image/jpeg"),
       textContent: `Image attachment uploaded: ${sanitizeFileName(attachment.name)}`,
       fileData: "",
-      previewUrl: String(attachment.previewUrl || ""),
+      previewUrl,
       size,
     },
   };
 };
 
 const normalizeIncomingAttachment = async (attachment) => {
-  if (!attachment || typeof attachment !== "object") {
+  if (!attachment || typeof attachment !== "object" || Array.isArray(attachment)) {
     return null;
   }
 
   const kind = String(attachment.kind || "text").trim().toLowerCase();
+
   if (!ALLOWED_KINDS.has(kind)) {
-    throw new Error("Unsupported attachment type.");
+    throw createAppError(400, "Unsupported attachment type.", "INVALID_ATTACHMENT");
   }
 
-  let normalized;
+  let normalized = null;
 
   if (kind === "text") normalized = normalizeTextAttachment(attachment);
   if (kind === "pdf") normalized = normalizePdfAttachment(attachment);
   if (kind === "docx") normalized = await normalizeDocxAttachment(attachment);
   if (kind === "image") normalized = normalizeImageAttachment(attachment);
 
-  const processingAttachment = normalized.processingAttachment;
-
   return {
-    processingAttachment,
-    storedAttachment: buildStoredAttachment(processingAttachment),
+    processingAttachment: normalized.processingAttachment,
+    storedAttachment: buildStoredAttachment(normalized.processingAttachment),
   };
 };
 

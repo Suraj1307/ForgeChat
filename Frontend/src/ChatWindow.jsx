@@ -3,6 +3,7 @@ import { lazy, Suspense, useCallback, useContext, useEffect, useRef, useState } 
 import { v1 as uuidv1 } from "uuid";
 import { MyContext } from "./MyContext.jsx";
 import toast from "react-hot-toast";
+import { apiFetch, createApiUrl, createAuthHeaders, getApiErrorMessage, readApiPayload } from "./utils/api.js";
 
 const Chat = lazy(() => import("./Chat.jsx"));
 
@@ -214,10 +215,8 @@ function ChatWindow() {
   const {
     prompt,
     setPrompt,
-    setReply,
     setStreamReply,
     currThreadId,
-    newChat,
     setPrevChats,
     setNewChat,
     isSidebarOpen,
@@ -397,7 +396,6 @@ function ChatWindow() {
     setLoading(true);
     setNewChat(false);
     setStreamReply("");
-    setReply(null);
     setComposerError("");
     setStatusMessage(attachedFile ? "Uploading attachment..." : "Connecting...");
     setUploadState(attachedFile ? "sending" : "idle");
@@ -420,12 +418,11 @@ function ChatWindow() {
       streamControllerRef.current = controller;
       let hasReceivedStreamEvent = false;
 
-      const response = await fetch("/api/chat/stream", {
+      const response = await apiFetch("/api/chat/stream", {
         method: "POST",
-        headers: {
+        headers: createAuthHeaders(authToken, {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`,
-        },
+        }),
         body: JSON.stringify({
           message: userMsg,
           threadId: currThreadId,
@@ -440,8 +437,8 @@ function ChatWindow() {
           throw new Error("Session expired. Please log in again.");
         }
 
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.error || "Failed to start streaming response.");
+        const errorData = await readApiPayload(response);
+        throw new Error(getApiErrorMessage(response, errorData, "Failed to start streaming response."));
       }
 
       firstEventTimeout = window.setTimeout(() => {
@@ -514,7 +511,7 @@ function ChatWindow() {
 
       const message =
         err instanceof TypeError && /fetch/i.test(err.message || "")
-          ? "Cannot reach the backend server. Make sure the API is running on port 5000."
+          ? `Cannot reach the backend server at ${createApiUrl("/api/chat/stream")}.`
           : err.message || "Something went wrong";
       setComposerError("");
       setStatusMessage("");
@@ -568,7 +565,6 @@ function ChatWindow() {
           : "fa-file-lines";
   const userInitials = getUserInitials(authUser?.name, authUser?.email);
   const joinedLabel = formatJoinedDate(authUser?.createdAt);
-  const firstName = authUser?.name?.trim()?.split(/\s+/)?.[0] || "there";
 
   return (
     <div className="chatWindow bg-forge-950/95" data-theme="dark">

@@ -1,11 +1,6 @@
-import "dotenv/config";
+import env from "../config/env.js";
 
 const OPENAI_API_BASE = "https://api.openai.com/v1/responses";
-const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-5.1";
-const OPENAI_TIMEOUT_MS = Number(process.env.OPENAI_TIMEOUT_MS || 45000);
-const OPENAI_MAX_RETRIES = Number(process.env.OPENAI_MAX_RETRIES || 1);
-const OPENAI_REASONING_EFFORT = String(process.env.OPENAI_REASONING_EFFORT || "").trim();
-
 const systemInstruction =
   "You are ForgeChat, a helpful AI assistant. Use the conversation history provided to maintain context.";
 const ALLOWED_ROLES = new Set(["user", "assistant", "developer"]);
@@ -91,25 +86,25 @@ const sanitizeMessagesForModel = (messages = []) =>
 
 const buildRequestBody = (messages, stream = false) => {
   const body = {
-    model: OPENAI_MODEL,
+    model: env.openAIModel,
     instructions: systemInstruction,
     input: sanitizeMessagesForModel(messages),
     stream,
   };
 
-  if (OPENAI_REASONING_EFFORT) {
-    body.reasoning = { effort: OPENAI_REASONING_EFFORT };
+  if (env.openAIReasoningEffort) {
+    body.reasoning = { effort: env.openAIReasoningEffort };
   }
 
   return body;
 };
 
 const getOpenAIApiKey = () => {
-  const apiKey = String(process.env.OPENAI_API_KEY || "").trim();
-  if (!apiKey) {
+  if (!env.openAIApiKey) {
     throw new Error("Missing OPENAI_API_KEY in Backend/.env");
   }
-  return apiKey;
+
+  return env.openAIApiKey;
 };
 
 const normalizeOpenAIErrorMessage = (message = "") => {
@@ -165,7 +160,7 @@ const createAbortSignal = (externalSignal) => {
 
   const timeout = setTimeout(
     () => controller.abort(new Error("OpenAI request timed out.")),
-    OPENAI_TIMEOUT_MS
+    env.openAITimeoutMs
   );
 
   if (externalSignal) {
@@ -191,7 +186,7 @@ const createAbortSignal = (externalSignal) => {
 const postToOpenAI = async (messages, stream, options = {}) => {
   let lastError;
 
-  for (let attempt = 0; attempt <= OPENAI_MAX_RETRIES; attempt += 1) {
+  for (let attempt = 0; attempt <= env.openAIMaxRetries; attempt += 1) {
     const { signal, cleanup } = createAbortSignal(options.signal);
 
     try {
@@ -207,7 +202,7 @@ const postToOpenAI = async (messages, stream, options = {}) => {
 
       cleanup();
 
-      if (!response.ok && attempt < OPENAI_MAX_RETRIES && shouldRetryResponse(response)) {
+      if (!response.ok && attempt < env.openAIMaxRetries && shouldRetryResponse(response)) {
         lastError = new Error(await extractOpenAIErrorMessage(response));
         continue;
       }
@@ -219,15 +214,14 @@ const postToOpenAI = async (messages, stream, options = {}) => {
       return response;
     } catch (error) {
       cleanup();
-      if (error.name === "AbortError") {
-        lastError = options.signal?.aborted
-          ? new Error("OpenAI request aborted.")
-          : new Error("OpenAI request timed out.");
-      } else {
-        lastError = error;
-      }
+      lastError =
+        error.name === "AbortError"
+          ? options.signal?.aborted
+            ? new Error("OpenAI request aborted.")
+            : new Error("OpenAI request timed out.")
+          : error;
 
-      if (attempt >= OPENAI_MAX_RETRIES) {
+      if (attempt >= env.openAIMaxRetries) {
         throw lastError;
       }
     }
@@ -253,7 +247,6 @@ const extractTextFromOpenAIResponse = (payload) => {
 const createOpenAIResponse = async (messages) => {
   const response = await postToOpenAI(messages, false);
   const data = await response.json();
-
   return extractTextFromOpenAIResponse(data) || "I couldn't generate a response.";
 };
 

@@ -4,6 +4,7 @@ import { MyContext } from "./MyContext.jsx";
 import { v1 as uuidv1 } from "uuid";
 import toast from "react-hot-toast";
 import logoImg from "./assets/blacklogo.png";
+import { apiRequest, createAuthHeaders, getApiErrorMessage, isUnauthorizedResponse } from "./utils/api.js";
 
 function Sidebar() {
   const {
@@ -12,7 +13,6 @@ function Sidebar() {
     currThreadId,
     setNewChat,
     setPrompt,
-    setReply,
     setStreamReply,
     setCurrThreadId,
     setPrevChats,
@@ -34,20 +34,19 @@ function Sidebar() {
     setThreadsError("");
 
     try {
-      const response = await fetch("/api/thread", {
-        headers: { Authorization: `Bearer ${authToken}` },
+      const { response, payload } = await apiRequest("/api/thread", {
+        headers: createAuthHeaders(authToken),
       });
 
-      if (response.status === 401) {
+      if (isUnauthorizedResponse(response)) {
         logout();
         return;
       }
 
-      const res = await response.json();
-      if (response.ok && Array.isArray(res)) {
-        setAllThreads(res);
+      if (response.ok && Array.isArray(payload)) {
+        setAllThreads(payload);
       } else {
-        setThreadsError("Could not load your chats.");
+        setThreadsError(getApiErrorMessage(response, payload, "Could not load your chats."));
       }
     } catch (err) {
       console.error("Sidebar load error:", err);
@@ -74,7 +73,6 @@ function Sidebar() {
 
   const resetComposerState = () => {
     setPrompt("");
-    setReply(null);
     setStreamReply("");
     setAttachedFile(null);
   };
@@ -98,21 +96,22 @@ function Sidebar() {
     setCurrThreadId(id);
 
     try {
-      const response = await fetch(`/api/thread/${id}`, {
-        headers: { Authorization: `Bearer ${authToken}` },
+      const { response, payload } = await apiRequest(`/api/thread/${id}`, {
+        headers: createAuthHeaders(authToken),
       });
 
-      if (response.status === 401) {
+      if (isUnauthorizedResponse(response)) {
         logout();
         return;
       }
 
-      const res = await response.json();
       if (response.ok) {
-        setPrevChats(res);
+        setPrevChats(Array.isArray(payload) ? payload : []);
         setNewChat(false);
         resetComposerState();
         setIsSidebarOpen(false);
+      } else {
+        toast.error(getApiErrorMessage(response, payload, "Error loading chat"));
       }
     } catch {
       toast.error("Error loading chat");
@@ -122,12 +121,12 @@ function Sidebar() {
   const deleteThread = async (id) => {
     cancelActiveStream();
     try {
-      const response = await fetch(`/api/thread/${id}`, {
+      const { response, payload } = await apiRequest(`/api/thread/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${authToken}` },
+        headers: createAuthHeaders(authToken),
       });
 
-      if (response.status === 401) {
+      if (isUnauthorizedResponse(response)) {
         logout();
         return;
       }
@@ -136,6 +135,8 @@ function Sidebar() {
         setAllThreads((prev) => prev.filter((t) => t.threadId !== id));
         if (id === currThreadId) createNewChat();
         toast.success("Deleted");
+      } else {
+        toast.error(getApiErrorMessage(response, payload, "Delete failed"));
       }
     } catch {
       toast.error("Delete failed");

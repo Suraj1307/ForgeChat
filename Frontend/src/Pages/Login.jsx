@@ -1,6 +1,6 @@
 import { useContext, useMemo, useState } from "react";
 import { MyContext } from "../MyContext";
-import { getApiErrorMessage, readApiPayload } from "../utils/api";
+import { apiRequest, getApiErrorMessage } from "../utils/api";
 import "./Login.css";
 
 const validateLogin = ({ email, password }) => {
@@ -48,7 +48,7 @@ function Login({ onSwitchMode }) {
     setStatus({ type: "", message: "" });
 
     try {
-      const response = await fetch("/api/login", {
+      const { response, payload } = await apiRequest("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -58,14 +58,12 @@ function Login({ onSwitchMode }) {
         }),
       });
 
-      const data = await readApiPayload(response);
-
       if (!response.ok) {
-        throw new Error(getApiErrorMessage(response, data, "Login failed."));
+        throw new Error(getApiErrorMessage(response, payload, "Login failed."));
       }
 
       setStatus({ type: "success", message: "Signed in successfully." });
-      login({ token: data.token, user: data.user });
+      login({ token: payload.token, user: payload.user });
     } catch (error) {
       setStatus({ type: "error", message: error.message || "Something went wrong." });
     } finally {

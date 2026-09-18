@@ -9,3 +9,6 @@ Frontend/.env
 
 # Root
 node_modules/
+.vscode/
+*.log
+coverage/

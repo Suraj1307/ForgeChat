@@ -1,3 +1,12 @@
+const apiBaseUrl = String(import.meta.env.VITE_API_BASE_URL || "")
+  .trim()
+  .replace(/\/+$/, "");
+
+const createApiUrl = (path) => {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return apiBaseUrl ? `${apiBaseUrl}${normalizedPath}` : normalizedPath;
+};
+
 export const readApiPayload = async (response) => {
   const contentType = response.headers.get("content-type") || "";
 
@@ -34,3 +43,22 @@ export const getApiErrorMessage = (response, payload, fallbackMessage) => {
 
   return fallbackMessage;
 };
+
+export const apiFetch = (path, options) => fetch(createApiUrl(path), options);
+
+export const apiRequest = async (path, options) => {
+  const response = await apiFetch(path, options);
+  const payload = await readApiPayload(response);
+  return { response, payload };
+};
+
+export const createAuthHeaders = (token, headers = {}) =>
+  token
+    ? {
+        ...headers,
+        Authorization: `Bearer ${token}`,
+      }
+    : { ...headers };
+
+export const isUnauthorizedResponse = (response) => response.status === 401;
+export { createApiUrl };

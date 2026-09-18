@@ -17,39 +17,32 @@ const getClientKey = (req, prefix) => {
   return `${prefix}:${ip}`;
 };
 
-const createRateLimit = ({
-  keyPrefix,
-  maxRequests,
-  windowMs,
-  message,
-}) => {
-  return (req, res, next) => {
-    const now = Date.now();
-    pruneOldBuckets(now);
+const createRateLimit = ({ keyPrefix, maxRequests, windowMs, message }) => (req, res, next) => {
+  const now = Date.now();
+  pruneOldBuckets(now);
 
-    const key = getClientKey(req, keyPrefix);
-    const existing = buckets.get(key);
+  const key = getClientKey(req, keyPrefix);
+  const existing = buckets.get(key);
 
-    if (!existing || existing.resetAt <= now) {
-      buckets.set(key, {
-        count: 1,
-        resetAt: now + windowMs,
-      });
-      next();
-      return;
-    }
-
-    existing.count += 1;
-
-    if (existing.count > maxRequests) {
-      const retryAfterSeconds = Math.ceil((existing.resetAt - now) / 1000);
-      res.setHeader("Retry-After", String(retryAfterSeconds));
-      res.status(429).json({ error: message });
-      return;
-    }
-
+  if (!existing || existing.resetAt <= now) {
+    buckets.set(key, {
+      count: 1,
+      resetAt: now + windowMs,
+    });
     next();
-  };
+    return;
+  }
+
+  existing.count += 1;
+
+  if (existing.count > maxRequests) {
+    const retryAfterSeconds = Math.ceil((existing.resetAt - now) / 1000);
+    res.setHeader("Retry-After", String(retryAfterSeconds));
+    res.status(429).json({ error: message, code: "RATE_LIMITED" });
+    return;
+  }
+
+  next();
 };
 
 export default createRateLimit;

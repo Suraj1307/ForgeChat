@@ -1,6 +1,6 @@
 import { useContext, useMemo, useState } from "react";
 import { MyContext } from "../MyContext";
-import { getApiErrorMessage, readApiPayload } from "../utils/api";
+import { apiRequest, getApiErrorMessage } from "../utils/api";
 import "./Signup.css";
 
 const loadImageElement = (src) =>
@@ -128,7 +128,7 @@ function Signup({ onSwitchMode }) {
     setStatus({ type: "", message: "" });
 
     try {
-      const response = await fetch("/api/register", {
+      const { response, payload } = await apiRequest("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -139,14 +139,12 @@ function Signup({ onSwitchMode }) {
         }),
       });
 
-      const data = await readApiPayload(response);
-
       if (!response.ok) {
-        throw new Error(getApiErrorMessage(response, data, "Signup failed."));
+        throw new Error(getApiErrorMessage(response, payload, "Signup failed."));
       }
 
       setStatus({ type: "success", message: "Account created successfully." });
-      login({ token: data.token, user: data.user });
+      login({ token: payload.token, user: payload.user });
     } catch (error) {
       setStatus({ type: "error", message: error.message || "Something went wrong." });
     } finally {
