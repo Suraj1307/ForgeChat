@@ -1,3 +1,4 @@
+import dns from "node:dns";
 import mongoose from "mongoose";
 import env from "./env.js";
 
@@ -28,6 +29,10 @@ const connectionOptions = {
   maxPoolSize: 10,
   minPoolSize: 1,
 };
+
+if (env.mongoDnsServers.length) {
+  dns.setServers(env.mongoDnsServers);
+}
 
 const clearReconnectTimer = () => {
   if (reconnectTimer) {

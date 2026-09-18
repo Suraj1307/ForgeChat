@@ -20,12 +20,19 @@ const toOrigins = (value) =>
     .map((origin) => origin.trim())
     .filter(Boolean);
 
+const toList = (value) =>
+  String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
 const env = {
   nodeEnv: toTrimmedString(process.env.NODE_ENV) || "development",
   port: toNumber(process.env.PORT, 5000),
   jwtSecret: toTrimmedString(process.env.JWT_SECRET),
   mongoUri: toTrimmedString(process.env.MONGODB_URI),
   mongoFallbackUri: toTrimmedString(process.env.MONGODB_URI_FALLBACK),
+  mongoDnsServers: toList(process.env.MONGODB_DNS_SERVERS),
   mongoServerSelectionTimeoutMs: toNumber(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS, 15000),
   mongoConnectTimeoutMs: toNumber(process.env.MONGODB_CONNECT_TIMEOUT_MS, 15000),
   mongoReconnectDelayMs: toNumber(process.env.MONGODB_RECONNECT_DELAY_MS, 15000),
