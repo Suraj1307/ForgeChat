@@ -13,31 +13,33 @@ function AuthPage() {
       <div className="authLayout">
         <section className="authCard">
           <div className="authCardTop">
-            <div className="authBrandRow">
-              <div>
-                <p className="authEyebrow">ForgeChat</p>
-                <h2>Welcome to your workspace</h2>
+            <div className="authBrandBlock">
+              <div className="authBrandBadge" aria-hidden="true">
+                F
               </div>
-              <div className="authTabs" role="tablist" aria-label="Authentication mode">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={!isSignup}
-                  className={!isSignup ? "active" : ""}
-                  onClick={() => setAuthMode("login")}
-                >
-                  Login
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={isSignup}
-                  className={isSignup ? "active" : ""}
-                  onClick={() => setAuthMode("signup")}
-                >
-                  Sign up
-                </button>
-              </div>
+              <p className="authEyebrow">ForgeChat</p>
+              <p className="authIntro">Secure access to your workspace, threads, and saved conversations.</p>
+            </div>
+
+            <div className="authTabs" role="tablist" aria-label="Authentication mode">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!isSignup}
+                className={!isSignup ? "active" : ""}
+                onClick={() => setAuthMode("login")}
+              >
+                Log In
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={isSignup}
+                className={isSignup ? "active" : ""}
+                onClick={() => setAuthMode("signup")}
+              >
+                Sign Up
+              </button>
             </div>
           </div>
 

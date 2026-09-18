@@ -157,7 +157,7 @@ function Sidebar() {
         onClick={() => setIsSidebarOpen(false)}
       />
 
-      <section className={`sidebar ${isSidebarOpen ? "open" : ""}`}>
+      <section className={`sidebar shadow-2xl shadow-black/20 backdrop-blur-xl ${isSidebarOpen ? "open" : ""}`}>
         <div className="sidebar-header">
           <div className="nav-top">
             <div className="sidebar-brand">
@@ -188,7 +188,7 @@ function Sidebar() {
             </div>
           </div>
 
-          <button type="button" className="menu-item-new" onClick={createNewChat}>
+          <button type="button" className="menu-item-new hover:-translate-y-0.5" onClick={createNewChat}>
             <div className="plus-icon-circle">
               <i className="fa-solid fa-plus"></i>
             </div>
@@ -220,7 +220,7 @@ function Sidebar() {
                 <li
                   key={thread.threadId}
                   onClick={() => changeThread(thread.threadId)}
-                  className={thread.threadId === currThreadId ? "active" : ""}
+                  className={`transition-all duration-200 hover:translate-x-0.5 ${thread.threadId === currThreadId ? "active" : ""}`}
                 >
                   <span className="title-text">{thread.title || "Untitled Chat"}</span>
                   <button

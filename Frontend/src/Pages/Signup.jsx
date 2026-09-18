@@ -1,5 +1,6 @@
 import { useContext, useMemo, useState } from "react";
 import { MyContext } from "../MyContext";
+import { getApiErrorMessage, readApiPayload } from "../utils/api";
 import "./Signup.css";
 
 const loadImageElement = (src) =>
@@ -80,6 +81,7 @@ function Signup({ onSwitchMode }) {
   const [status, setStatus] = useState({ type: "", message: "" });
 
   const errors = useMemo(() => validateSignup({ name, email, password }), [name, email, password]);
+  const avatarInitial = name.trim().charAt(0).toUpperCase() || "+";
 
   const setFieldTouched = (field) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
@@ -137,10 +139,10 @@ function Signup({ onSwitchMode }) {
         }),
       });
 
-      const data = await response.json();
+      const data = await readApiPayload(response);
 
       if (!response.ok) {
-        throw new Error(data.error || "Signup failed.");
+        throw new Error(getApiErrorMessage(response, data, "Signup failed."));
       }
 
       setStatus({ type: "success", message: "Account created successfully." });
@@ -153,55 +155,19 @@ function Signup({ onSwitchMode }) {
   };
 
   return (
-    <div className="signupPanel">
-      <div className="signupHeader">
+    <div className="authPanel signupPanel">
+      <div className="authHeader">
         <h2>Create account</h2>
-        <p>Start using ForgeChat with a cleaner, faster workspace for your conversations.</p>
+        <p>Set up your profile and start chatting in seconds.</p>
       </div>
 
-      <form className="signupForm" onSubmit={handleSubmit} noValidate>
-        <label className="signupAvatarField">
-          <span>Profile picture</span>
-          <div className="signupAvatarRow">
-            <div className="signupAvatarPreview" aria-hidden="true">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="" />
-              ) : (
-                <i className="fa-solid fa-user"></i>
-              )}
-            </div>
-
-            <div className="signupAvatarActions">
-              <label className="signupAvatarButton">
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={handleAvatarChange}
-                />
-                <span>{avatarUrl ? "Change photo" : "Upload photo"}</span>
-              </label>
-
-              {avatarUrl && (
-                <button
-                  type="button"
-                  className="signupAvatarRemove"
-                  onClick={() => {
-                    setAvatarUrl("");
-                    setStatus({ type: "", message: "" });
-                  }}
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-          </div>
-          <small className="signupAvatarHint">Optional. PNG, JPG, JPEG, or WEBP under 1.5 MB.</small>
-        </label>
-
-        <label className="signupField">
-          <span>Name</span>
+      <form className="authForm" onSubmit={handleSubmit} noValidate>
+        <label className="authField">
+          <span>Full Name</span>
           <input
             type="text"
+            name="name"
+            autoComplete="name"
             value={name}
             onChange={(e) => {
               setName(e.target.value);
@@ -214,10 +180,12 @@ function Signup({ onSwitchMode }) {
           {touched.name && errors.name && <small>{errors.name}</small>}
         </label>
 
-        <label className="signupField">
-          <span>Email</span>
+        <label className="authField">
+          <span>Email Address</span>
           <input
             type="email"
+            name="email"
+            autoComplete="email"
             value={email}
             onChange={(e) => {
               setEmail(e.target.value);
@@ -230,11 +198,13 @@ function Signup({ onSwitchMode }) {
           {touched.email && errors.email && <small>{errors.email}</small>}
         </label>
 
-        <label className="signupField">
+        <label className="authField">
           <span>Password</span>
-          <div className="signupPasswordWrap">
+          <div className="authPasswordWrap">
             <input
               type={showPassword ? "text" : "password"}
+              name="password"
+              autoComplete="new-password"
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value);
@@ -246,7 +216,7 @@ function Signup({ onSwitchMode }) {
             />
             <button
               type="button"
-              className="signupPasswordToggle"
+              className="authGhostButton"
               onClick={() => setShowPassword((prev) => !prev)}
             >
               {showPassword ? "Hide" : "Show"}
@@ -255,17 +225,62 @@ function Signup({ onSwitchMode }) {
           {touched.password && errors.password && <small>{errors.password}</small>}
         </label>
 
-        <button type="submit" className={`signupButton ${loading ? "isLoading" : ""}`} disabled={loading}>
-          <span>{loading ? "Creating account..." : "Create account"}</span>
+        <label className="authAvatarField">
+          <span>Profile Picture</span>
+          <div className="authAvatarCard">
+            <div className="authAvatarPreview" aria-hidden="true">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" />
+              ) : (
+                <span>{avatarInitial}</span>
+              )}
+            </div>
+
+            <div className="authAvatarMeta">
+              <div className="authAvatarActions">
+                <label className="authAvatarUpload">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={handleAvatarChange}
+                  />
+                  <span>{avatarUrl ? "Change photo" : "Upload photo"}</span>
+                </label>
+
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    className="authAvatarRemove"
+                    onClick={() => {
+                      setAvatarUrl("");
+                      setStatus({ type: "", message: "" });
+                    }}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+
+              <p className="authAvatarHint">Optional. PNG, JPG, JPEG, or WEBP under 1.5 MB.</p>
+            </div>
+          </div>
+        </label>
+
+        <button
+          type="submit"
+          className={`authPrimaryButton ${loading ? "isLoading" : ""}`}
+          disabled={loading}
+        >
+          <span>{loading ? "Creating account..." : "Create Account"}</span>
         </button>
 
-        {status.message && <div className={`signupMessage ${status.type}`}>{status.message}</div>}
+        {status.message && <div className={`authMessage ${status.type}`}>{status.message}</div>}
       </form>
 
-      <p className="signupSwitch">
+      <p className="authSwitch">
         Already have an account?
-        <button type="button" className="signupSwitchButton" onClick={onSwitchMode}>
-          Login
+        <button type="button" className="authSwitchButton" onClick={onSwitchMode}>
+          Log In
         </button>
       </p>
     </div>

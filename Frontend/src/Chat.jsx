@@ -114,16 +114,16 @@ function Chat({ suggestedPrompts = [] }) {
   };
 
   return (
-    <div className="chats">
+    <div className="chats pb-28">
       {newChat && (
-        <div className="welcome-screen">
+        <div className="welcome-screen animate-[fadeIn_0.6s_ease-out]">
           <h1>What can I help with?</h1>
           <p className="welcome-copy">
             Start with a question, paste some code, or use one of these prompts to get moving faster.
           </p>
           <div className="suggested-prompts">
             {suggestedPrompts.map((item) => (
-              <button key={item} type="button" className="prompt-chip" onClick={() => setPrompt(item)}>
+              <button key={item} type="button" className="prompt-chip hover:scale-[1.02]" onClick={() => setPrompt(item)}>
                 {item}
               </button>
             ))}

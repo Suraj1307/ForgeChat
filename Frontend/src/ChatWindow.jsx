@@ -571,8 +571,8 @@ function ChatWindow() {
   const firstName = authUser?.name?.trim()?.split(/\s+/)?.[0] || "there";
 
   return (
-    <div className="chatWindow" data-theme="dark">
-      <div className="navbar">
+    <div className="chatWindow bg-forge-950/95" data-theme="dark">
+      <div className="navbar shadow-lg shadow-black/10">
         <div className="navbarLeft">
           <button
             type="button"
@@ -583,7 +583,7 @@ function ChatWindow() {
           >
             <i className={`fa-solid ${isSidebarOpen ? "fa-xmark" : "fa-bars"}`}></i>
           </button>
-          <div className="navbarBrand">
+          <div className="navbarBrand font-display">
             <span>ForgeChat</span>
           </div>
         </div>
@@ -661,7 +661,7 @@ function ChatWindow() {
         </>
       )}
 
-      <div className="chatStage">
+      <div className="chatStage px-3 sm:px-5">
         <Suspense fallback={<div className="chatLoaderState">Loading chat...</div>}>
           <Chat suggestedPrompts={SUGGESTED_PROMPTS} />
         </Suspense>
@@ -699,7 +699,7 @@ function ChatWindow() {
           </div>
         )}
 
-        <div className="inputBox">
+        <div className="inputBox ring-1 ring-cyan-300/10 transition-all duration-200 focus-within:ring-cyan-300/35 focus-within:shadow-[0_0_0_4px_rgba(89,208,255,0.06)]">
           <textarea
             ref={textareaRef}
             placeholder="Ask anything, or drop in code, docs, and screenshots..."

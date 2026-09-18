@@ -1,5 +1,6 @@
 import { useContext, useMemo, useState } from "react";
 import { MyContext } from "../MyContext";
+import { getApiErrorMessage, readApiPayload } from "../utils/api";
 import "./Login.css";
 
 const validateLogin = ({ email, password }) => {
@@ -57,10 +58,10 @@ function Login({ onSwitchMode }) {
         }),
       });
 
-      const data = await response.json();
+      const data = await readApiPayload(response);
 
       if (!response.ok) {
-        throw new Error(data.error || "Login failed.");
+        throw new Error(getApiErrorMessage(response, data, "Login failed."));
       }
 
       setStatus({ type: "success", message: "Signed in successfully." });
@@ -73,17 +74,19 @@ function Login({ onSwitchMode }) {
   };
 
   return (
-    <div className="loginPanel">
-      <div className="loginHeader">
+    <div className="authPanel loginPanel">
+      <div className="authHeader">
         <h2>Welcome back</h2>
-        <p>Sign in to continue your chats, files, and saved workspace.</p>
+        <p>Please enter your details to continue.</p>
       </div>
 
-      <form className="loginForm" onSubmit={handleSubmit} noValidate>
-        <label className="loginField">
-          <span>Email</span>
+      <form className="authForm" onSubmit={handleSubmit} noValidate>
+        <label className="authField">
+          <span>Email Address</span>
           <input
             type="email"
+            name="email"
+            autoComplete="username"
             value={email}
             onChange={(e) => {
               setEmail(e.target.value);
@@ -96,11 +99,13 @@ function Login({ onSwitchMode }) {
           {touched.email && errors.email && <small>{errors.email}</small>}
         </label>
 
-        <label className="loginField">
+        <label className="authField">
           <span>Password</span>
-          <div className="loginPasswordWrap">
+          <div className="authPasswordWrap">
             <input
               type={showPassword ? "text" : "password"}
+              name="password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value);
@@ -112,7 +117,7 @@ function Login({ onSwitchMode }) {
             />
             <button
               type="button"
-              className="loginPasswordToggle"
+              className="authGhostButton"
               onClick={() => setShowPassword((prev) => !prev)}
             >
               {showPassword ? "Hide" : "Show"}
@@ -121,8 +126,8 @@ function Login({ onSwitchMode }) {
           {touched.password && errors.password && <small>{errors.password}</small>}
         </label>
 
-        <div className="loginMeta">
-          <label className="loginRemember">
+        <div className="authInlineRow">
+          <label className="authCheckbox">
             <input
               type="checkbox"
               checked={rememberMe}
@@ -130,19 +135,36 @@ function Login({ onSwitchMode }) {
             />
             <span>Remember me</span>
           </label>
+
+          <button
+            type="button"
+            className="authTextButton"
+            onClick={() =>
+              setStatus({
+                type: "info",
+                message: "Forgot-password flow is not wired yet, but this UI is ready for it.",
+              })
+            }
+          >
+            Forgot password?
+          </button>
         </div>
 
-        <button type="submit" className={`loginButton ${loading ? "isLoading" : ""}`} disabled={loading}>
-          <span>{loading ? "Signing in..." : "Login"}</span>
+        <button
+          type="submit"
+          className={`authPrimaryButton ${loading ? "isLoading" : ""}`}
+          disabled={loading}
+        >
+          <span>{loading ? "Signing in..." : "Sign In"}</span>
         </button>
 
-        {status.message && <div className={`loginMessage ${status.type}`}>{status.message}</div>}
+        {status.message && <div className={`authMessage ${status.type}`}>{status.message}</div>}
       </form>
 
-      <p className="loginSwitch">
+      <p className="authSwitch">
         Don&apos;t have an account?
-        <button type="button" className="loginSwitchButton" onClick={onSwitchMode}>
-          Sign up
+        <button type="button" className="authSwitchButton" onClick={onSwitchMode}>
+          Sign Up
         </button>
       </p>
     </div>

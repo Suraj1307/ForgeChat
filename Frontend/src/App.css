@@ -1,3 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Segoe UI", sans-serif;
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+  --color-forge-950: #07111c;
+  --color-forge-900: #0b1724;
+  --color-forge-800: #102438;
+  --color-forge-400: #67d7ff;
+  --color-forge-300: #9ce7ff;
+}
+
 :root {
   --bg-base: #0d1117;
   --bg-app: #101722;
@@ -66,6 +78,7 @@ a {
   width: 100%;
   min-height: 100vh;
   overflow: hidden;
+  isolation: isolate;
 }
 
 .mainLayout::before {
@@ -102,6 +115,11 @@ button {
   background:
     radial-gradient(circle at center, rgba(27, 167, 255, 0.14), transparent 28%),
     var(--bg-base);
+}
+
+::selection {
+  color: #f7fcff;
+  background: rgba(89, 208, 255, 0.3);
 }
 
 @media (max-width: 900px) {
