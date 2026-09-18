@@ -29,11 +29,10 @@ const env = {
   mongoServerSelectionTimeoutMs: toNumber(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS, 15000),
   mongoConnectTimeoutMs: toNumber(process.env.MONGODB_CONNECT_TIMEOUT_MS, 15000),
   mongoReconnectDelayMs: toNumber(process.env.MONGODB_RECONNECT_DELAY_MS, 15000),
-  openAIApiKey: toTrimmedString(process.env.OPENAI_API_KEY),
-  openAIModel: toTrimmedString(process.env.OPENAI_MODEL) || "gpt-5.1",
-  openAITimeoutMs: toNumber(process.env.OPENAI_TIMEOUT_MS, 45000),
-  openAIMaxRetries: Math.max(0, Number(process.env.OPENAI_MAX_RETRIES || 1)),
-  openAIReasoningEffort: toTrimmedString(process.env.OPENAI_REASONING_EFFORT),
+  geminiApiKey: toTrimmedString(process.env.GEMINI_API_KEY),
+  geminiModel: toTrimmedString(process.env.GEMINI_MODEL) || "gemini-2.5-flash",
+  geminiTimeoutMs: toNumber(process.env.GEMINI_TIMEOUT_MS, 45000),
+  geminiMaxRetries: Math.max(0, Number(process.env.GEMINI_MAX_RETRIES || 1)),
   corsOrigins: toOrigins(process.env.CORS_ORIGIN),
 };
 

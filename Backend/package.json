@@ -9,6 +9,7 @@
     "test": "node tests/run-tests.js"
   },
   "dependencies": {
+    "@google/genai": "^2.23.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",

@@ -2,10 +2,9 @@ import assert from "node:assert/strict";
 
 import { normalizeIncomingAttachment } from "../utils/attachments.js";
 import {
-  normalizeOpenAIErrorMessage,
   normalizeRole,
-  sanitizeMessagesForModel,
-} from "../utils/openai.js";
+  toGeminiContents,
+} from "../services/geminiService.js";
 import createRateLimit from "../utils/rateLimit.js";
 
 const tests = [];
@@ -128,12 +127,12 @@ test("rate limiter blocks requests over the limit", () => {
   assert.ok(Number(res.headers["Retry-After"]) >= 1);
 });
 
-test("legacy and empty roles are normalized before sending to OpenAI", () => {
-  assert.equal(normalizeRole("gpt"), "assistant");
-  assert.equal(normalizeRole("system"), "developer");
+test("legacy and empty roles are normalized before sending to Gemini", () => {
+  assert.equal(normalizeRole("gpt"), "model");
+  assert.equal(normalizeRole("system"), "user");
   assert.equal(normalizeRole(""), "user");
 
-  const messages = sanitizeMessagesForModel([
+  const messages = toGeminiContents([
     { role: "gpt", content: "Old assistant reply" },
     { role: "", content: "User question from old thread" },
     { role: "assistant", content: "   " },
@@ -141,21 +140,14 @@ test("legacy and empty roles are normalized before sending to OpenAI", () => {
 
   assert.deepEqual(messages, [
     {
-      role: "assistant",
-      content: [{ type: "output_text", text: "Old assistant reply" }],
+      parts: [{ text: "Old assistant reply" }],
+      role: "model",
     },
     {
       role: "user",
-      content: [{ type: "input_text", text: "User question from old thread" }],
+      parts: [{ text: "User question from old thread" }],
     },
   ]);
-});
-
-test("OpenAI rate limit errors are converted into a user-friendly message", () => {
-  assert.equal(
-    normalizeOpenAIErrorMessage("Rate limit reached for requests per min. Please try again later."),
-    "ForgeChat is busy right now. Please try again in a moment."
-  );
 });
 
 let failures = 0;

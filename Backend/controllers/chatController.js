@@ -1,8 +1,7 @@
 import {
-  createOpenAIResponse,
-  normalizeOpenAIErrorMessage,
-  streamOpenAIResponse,
-} from "../utils/openai.js";
+  generateResponse,
+  streamResponse,
+} from "../services/geminiService.js";
 import { normalizeIncomingAttachment } from "../utils/attachments.js";
 import { createAppError } from "../utils/appError.js";
 import { normalizeMessage, normalizePaginationLimit, normalizeThreadId } from "../utils/requestValidation.js";
@@ -64,14 +63,14 @@ const createChat = async (req, res) => {
   );
 
   try {
-    const assistantReply = await createOpenAIResponse(buildMessagesForModel(thread, normalizedAttachment));
+    const assistantReply = await generateResponse(buildMessagesForModel(thread, normalizedAttachment));
     await appendAssistantReply(thread, assistantReply);
     res.json({ reply: assistantReply });
   } catch (error) {
     throw createAppError(
       502,
-      normalizeOpenAIErrorMessage(error.message || "AI Processing Failed"),
-      "OPENAI_ERROR"
+      error.message || "AI Processing Failed",
+      error.code || "GEMINI_ERROR"
     );
   }
 };
@@ -123,7 +122,7 @@ const streamChat = async (req, res) => {
 
     sendSse(res, { type: "status", status: "Thinking..." });
 
-    const assistantReply = await streamOpenAIResponse(
+    const assistantReply = await streamResponse(
       buildMessagesForModel(thread, normalizedAttachment),
       {
         onDelta: (delta) => sendSse(res, { type: "delta", delta }),
@@ -141,7 +140,7 @@ const streamChat = async (req, res) => {
     if (!clientDisconnected) {
       sendSse(res, {
         type: "error",
-        message: normalizeOpenAIErrorMessage(error.message || "AI Processing Failed"),
+        message: error.message || "AI Processing Failed",
       });
     }
   } finally {

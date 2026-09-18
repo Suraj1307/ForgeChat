@@ -60,10 +60,10 @@ Backend expects:
 MONGODB_URI=your_mongodb_connection_string
 MONGODB_URI_FALLBACK=optional_non_srv_connection_string
 JWT_SECRET=your_jwt_secret
-OPENAI_API_KEY=your_openai_api_key
-OPENAI_MODEL=gpt-5.1
-OPENAI_TIMEOUT_MS=45000
-OPENAI_MAX_RETRIES=1
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_TIMEOUT_MS=45000
+GEMINI_MAX_RETRIES=1
 CORS_ORIGIN=http://localhost:5173
 PORT=5000
 NODE_ENV=production

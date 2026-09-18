@@ -494,7 +494,7 @@ function ChatWindow() {
       if (isAbort || activeRequestIdRef.current !== requestId) {
         if (activeRequestIdRef.current === requestId) {
           const message =
-            "The server connected but did not start streaming. Check whether the backend and OpenAI request are working.";
+            "The server connected but did not start streaming. Check whether the backend and Gemini request are working.";
           setComposerError("");
           setStatusMessage("");
           setUploadState(nextAttachment ? "ready" : "idle");
